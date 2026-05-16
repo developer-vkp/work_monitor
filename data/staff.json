@@ -1,0 +1,13 @@
+{
+    "staff": [
+        {
+            "id": "ST157133",
+            "name": "Devi",
+            "email": "devi@gmail.com",
+            "role": "Developer",
+            "department": "Engineering",
+            "inst": "Engineering",
+            "active": true
+        }
+    ]
+}
