@@ -53,57 +53,6 @@ function rLp(){
   if(S.role!=='Director'){el('lp').style.display='none';return;}
   el('lp').style.display='flex';el('lp').className='lpane';
   var active=activeStaff();
-  // nav items
-
-  // staff cards
-  var cardsHTML='';
-  active.forEach(function(s,i){
-    var p=perf(s.id);var pc=p>=70?'#34D399':p>=40?'#FCD34D':'#F87171';
-    var ts=tasksFor(s.id,_today);
-    var ap=ts.filter(function(t){return t.action==='Approved';}).length;
-    var rj=ts.filter(function(t){return t.action==='Rejected';}).length;
-    var pn=ts.filter(function(t){return !t.action;}).length;
-    cardsHTML+='<div class="scard">'+
-      '<div class="sc-row">'+
-        '<div class="ava ava-sm" style="background:'+gbg(s.id)+';color:'+gc(s.id)+'">'+ini(s.name)+'</div>'+
-        '<div class="sc-info"><div class="sc-name">'+esc(s.name)+'</div><div class="sc-role">'+esc(s.role)+'</div></div>'+
-        '<div class="sc-pct" style="color:'+pc+'">'+p+'%</div>'+
-      '</div>'+
-      '<div class="sc-bar"><div class="sc-barfill" style="width:'+p+'%;background:'+pc+'"></div></div>'+
-      '<div class="sc-stats">'+
-        '<span class="sc-stat" style="background:rgba(52,211,153,.18);color:#34D399">&#10003; '+ap+'</span>'+
-        '<span class="sc-stat" style="background:rgba(248,113,113,.18);color:#F87171">&#10007; '+rj+'</span>'+
-        '<span class="sc-stat" style="background:rgba(252,211,77,.18);color:#FCD34D">&#9675; '+pn+'</span>'+
-        '<span class="sc-stat" style="background:var(--bg2);color:var(--t3)">'+ts.length+'/5</span>'+
-      '</div>'+
-      '<div class="sc-btns">'+
-        '<button class="sc-btn" data-act="edit" data-i="'+i+'">&#9998; Edit</button>'+
-        '<button class="sc-btn" data-act="assign" data-i="'+i+'">&#43; Task</button>'+
-        '<button class="sc-btn red" data-act="remove" data-i="'+i+'">&#10005;</button>'+
-      '</div>'+
-    '</div>';
-  });
-  var addFormHTML='';
-  if(S.showAddForm){
-    addFormHTML='<div class="asf">'+
-      '<div class="asf-h">&#43; Add Staff Member</div>'+
-      '<div style="font-size:9px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">Full Name *</div>'+
-      '<input class="asf-i" id="ns-name" placeholder="e.g. Rajesh Kumar">'+
-      '<div style="font-size:9px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">Designation / Role *</div>'+
-      '<select class="asf-sel" id="ns-role"><option value="">-- Select Designation --</option>'+ROLES.map(function(r){return '<option value="'+esc(r)+'">'+esc(r)+'</option>';}).join('')+'</select>'+
-      '<div id="ns-rc-w" style="display:none">'+
-        '<input class="asf-i" id="ns-rc" placeholder="Type designation manually">'+
-      '</div>'+
-      '<div style="font-size:9px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">Department / Group *</div>'+
-      '<select class="asf-sel" id="ns-inst"><option value="">-- Select Department --</option>'+INSTS.map(function(r){return '<option value="'+esc(r)+'">'+esc(r)+'</option>';}).join('')+'</select>'+
-      '<div id="ns-ic-w" style="display:none">'+
-        '<input class="asf-i" id="ns-ic" placeholder="Type department name">'+
-      '</div>'+
-      '<div style="font-size:9px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">Email (Optional)</div>'+
-      '<input class="asf-i" id="ns-email" placeholder="email@org.in">'+
-      '<div class="asf-row"><button class="asf-save" id="ns-sv">&#43; Add to Staff List</button><button class="asf-x" id="ns-x">Cancel</button></div>'+
-    '</div>';
-  }
   el('lp').innerHTML=
     '<div class="lp-top">'+
       '<div class="lp-nav">'+
@@ -111,14 +60,14 @@ function rLp(){
           '<svg class="lp-nav-ic" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>'+
           '<span class="lp-nav-lbl">Dashboard</span>'+
         '</div>'+
+        '<div class="lp-nav-item '+(S.view==='tasks'?'on':'')+'" data-view="tasks">'+
+          '<svg class="lp-nav-ic" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>'+
+          '<span class="lp-nav-lbl">Task</span>'+
+        '</div>'+
         '<div class="lp-nav-item '+(S.view==='staff'?'on':'')+'" data-view="staff">'+
           '<svg class="lp-nav-ic" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>'+
           '<span class="lp-nav-lbl">Staff Management</span>'+
-          '<span class="lp-nav-badge">'+active.length+'</span>'+
         '</div>'+
-      '</div>'+
-      '<div class="lp-staff-scroll">'+
-        '<div id="lp-cards">'+cardsHTML+'</div>'+
       '</div>'+
     '</div>';
   // Bind
@@ -131,23 +80,7 @@ function rLp(){
       render();
       return;
     }
-    var btn=e.target.closest('[data-act]');
-    if(btn){e.stopPropagation();var act=btn.dataset.act;var idx=parseInt(btn.dataset.i);var staff=activeStaff();var s=staff[idx];if(!s)return;
-      if(act==='edit')openEditStaff(s.id);else if(act==='assign')openAssign(s.id);else if(act==='remove')confirmRemove(s.id);return;}
   });
-
-  var tog=el('lp-toggle-add');if(tog)tog.onclick=function(){S.showAddForm=!S.showAddForm;rLp();};
-  var nsSv=el('ns-sv');if(nsSv)nsSv.onclick=saveNewStaff;
-  var nsX=el('ns-x');if(nsX)nsX.onclick=function(){S.showAddForm=false;rLp();};
-  var nsRole=el('ns-role');if(nsRole)nsRole.onchange=function(){el('ns-rc-w').style.display=(this.value==='Other'||this.value==='Other (type manually)')?'block':'none';};
-  var nsInst=el('ns-inst');if(nsInst)nsInst.onchange=function(){el('ns-ic-w').style.display=this.value==='Other'?'block':'none';};
-  // search filter
-  var srch=el('lp-srch');
-  if(srch)srch.oninput=function(){
-    var q=this.value.toLowerCase();
-    var cards=el('lp-cards').querySelectorAll('.scard');
-    cards.forEach(function(c,i){var s=activeStaff()[i];if(!s)return;c.style.display=(!q||s.name.toLowerCase().includes(q)||s.role.toLowerCase().includes(q))?'':'none';});
-  };
 }
 
 // ── TOPBAR ───────────────────────────────────────────────────────
@@ -217,7 +150,7 @@ function rTb(){
 // ── TAB BAR ──────────────────────────────────────────────────────
 function rTabBar(){
   var tbar=el('tbar');
-  if(S.role!=='Director'||S.view==='staff'){tbar.style.display='none';return;}
+  if(S.role!=='Director'||S.view==='staff'||S.view==='tasks'){tbar.style.display='none';return;}
   tbar.style.display='flex';
   var tabs=[{v:'overview',lbl:'&#9617; Overview'},{v:'board',lbl:'&#9776; Board'},{v:'timeline',lbl:'&#9641; Timeline'},{v:'analytics',lbl:'&#9656; Analytics'}];
   tbar.innerHTML=tabs.map(function(t){return '<div class="tab'+(S.view===t.v?' on':'')+'" data-tab="'+t.v+'">'+t.lbl+'</div>';}).join('');
@@ -402,7 +335,7 @@ function saveStaffFromPage(){
   if(!dept){toast('Department is required','e');return;}
 
   var newStaff={
-    id:uid(),
+    id:'ST'+String(Date.now()).slice(-6),
     name:name,
     email:email,
     role:role,
@@ -411,7 +344,7 @@ function saveStaffFromPage(){
     active:true
   };
   STAFF.push(newStaff);
-  save();
+  schedSave();
   S.showAddForm=false;
   toast('Staff member added successfully','s');
   addFeed('New staff added: '+name,'green');
@@ -682,20 +615,44 @@ function rStaffDetail(sid){
     if(!t)return '<div class="trow-empty">Task '+n+' &mdash; not submitted</div>';
     var rc=t.action==='Approved'?' ta':t.action==='Rejected'?' tr':'';
     return '<div class="trow'+rc+'"><div class="trow-n">'+n+'</div>'+
-      '<div class="trow-body"><div class="trow-desc">'+esc(t.desc)+'</div>'+
-        '<div class="trow-meta"><span class="bdg '+(t.status==='Done'?'bdg-g':'bdg-p')+'">'+(t.status==='Done'?'Done':'Pending')+'</span>'+
+      '<div class="trow-body">'+
+        '<div class="trow-desc">'+esc(t.desc)+'</div>'+
+        '<div class="trow-meta">'+
+          '<span class="bdg '+(t.status==='Done'?'bdg-g':'bdg-p')+'">'+(t.status==='Done'?'Done':'Pending')+'</span>'+
           '<span style="font-size:10px;color:'+( t.priority==='High'?'var(--red)':t.priority==='Medium'?'var(--amber)':'var(--green)')+'">'+esc(t.priority)+'</span>'+
           (t.staffRem?'<span style="font-size:10px;color:var(--t3);font-style:italic">Note: &ldquo;'+esc(t.staffRem.slice(0,40))+'&rdquo;</span>':'')+
         '</div>'+
-        '<textarea class="rem-ta" data-remid="'+t.id+'" oninput="schedSave()" placeholder="Remarks for '+esc(s.name.split(' ')[0])+'..." style="margin-top:6px">'+esc(t.remarks)+'</textarea>'+
+        (t.remarks?'<div style="margin-top:8px;padding:8px 10px;background:var(--alight);border-left:3px solid var(--amber);border-radius:4px">'+
+          '<div style="font-size:9px;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Director Remarks:</div>'+
+          '<div style="font-size:11px;color:var(--t2);line-height:1.4">'+esc(t.remarks)+'</div>'+
+        '</div>':'')+
+        '<div style="margin-top:8px">'+
+          '<div style="font-size:10px;font-weight:600;color:var(--t3);margin-bottom:4px">Add/Edit Remarks:</div>'+
+          '<textarea class="rem-ta" data-remid="'+t.id+'" placeholder="Remarks for '+esc(s.name.split(' ')[0])+'..." style="width:100%;min-height:60px;resize:vertical">'+esc(t.remarks||'')+'</textarea>'+
+        '</div>'+
       '</div>'+
       '<div class="trow-right">'+
-        '<div class="act-row">'+
-          '<button class="btn btn-grn btn-xs" style="'+(t.action==='Approved'?'background:var(--green);color:#fff;border-color:var(--green);':'')+'" data-act="approve" data-tid="'+t.id+'">&#10004; Approve</button>'+
-          '<button class="btn btn-red btn-xs" style="'+(t.action==='Rejected'?'background:var(--red);color:#fff;border-color:var(--red);':'')+'" data-act="reject" data-tid="'+t.id+'">&#10006; Reject</button>'+
+        '<div style="display:flex;flex-direction:column;gap:6px;width:100%">'+
+          '<button class="btn btn-grn btn-xs" style="'+(t.action==='Approved'?'background:var(--green);color:#fff;border-color:var(--green);':'')+';width:100%" data-act="approve" data-tid="'+t.id+'">'+
+            '<svg style="width:12px;height:12px;margin-right:3px" fill="none" stroke="currentColor" viewBox="0 0 24 24">'+
+              '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>'+
+            '</svg>'+
+            'Approve'+
+          '</button>'+
+          '<button class="btn btn-red btn-xs" style="'+(t.action==='Rejected'?'background:var(--red);color:#fff;border-color:var(--red);':'')+';width:100%" data-act="reject" data-tid="'+t.id+'">'+
+            '<svg style="width:12px;height:12px;margin-right:3px" fill="none" stroke="currentColor" viewBox="0 0 24 24">'+
+              '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>'+
+            '</svg>'+
+            'Reject'+
+          '</button>'+
+          (t.action?'<button class="btn btn-out btn-xs" style="width:100%" data-act="clear" data-tid="'+t.id+'">Clear</button>':'')+
+          '<button class="btn btn-pri btn-xs" style="width:100%" data-act="savrem" data-tid="'+t.id+'">'+
+            '<svg style="width:12px;height:12px;margin-right:3px" fill="none" stroke="currentColor" viewBox="0 0 24 24">'+
+              '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path>'+
+            '</svg>'+
+            'Save Remarks'+
+          '</button>'+
         '</div>'+
-        (t.action?'<button class="btn btn-out btn-xs" data-act="clear" data-tid="'+t.id+'">Clear</button>':'')+
-        '<button class="btn btn-pri btn-xs" data-act="savrem" data-tid="'+t.id+'">Save</button>'+
       '</div>'+
     '</div>';
   }).join('');
@@ -714,10 +671,40 @@ function bindDetailEvents(){
     var act=btn.dataset.act;var tid=parseInt(btn.dataset.tid);
     var t=TASKS.find(function(x){return x.id===tid;});if(!t)return;
     var s=STAFF.find(function(x){return x.id===t.staffId;});
-    if(act==='approve'){t.action='Approved';toast(s.name+' Task '+t.n+' Approved','s');addFeed(s.name.split(' ')[0]+' Task '+t.n+' Approved','green');renderContent();bindDetailEvents();}
-    else if(act==='reject'){t.action='Rejected';toast(s.name+' Task '+t.n+' Rejected','e');addFeed(s.name.split(' ')[0]+' Task '+t.n+' Rejected','red');renderContent();bindDetailEvents();}
-    else if(act==='clear'){t.action='';renderContent();bindDetailEvents();toast('Cleared','i');}
-    else if(act==='savrem'){var ri=dr.querySelector('[data-remid="'+tid+'"]');if(ri&&t){t.remarks=ri.value.trim();toast('Saved','s');addFeed('Remarks updated','amber');schedSave();}}
+    if(act==='approve'){
+      t.action='Approved';
+      toast(s.name+' Task '+t.n+' Approved','s');
+      addFeed(s.name.split(' ')[0]+' Task '+t.n+' Approved','green');
+      schedSave();
+      renderContent();
+      bindDetailEvents();
+    }
+    else if(act==='reject'){
+      t.action='Rejected';
+      toast(s.name+' Task '+t.n+' Rejected','e');
+      addFeed(s.name.split(' ')[0]+' Task '+t.n+' Rejected','red');
+      schedSave();
+      renderContent();
+      bindDetailEvents();
+    }
+    else if(act==='clear'){
+      t.action='';
+      toast('Cleared','i');
+      schedSave();
+      renderContent();
+      bindDetailEvents();
+    }
+    else if(act==='savrem'){
+      var ri=dr.querySelector('[data-remid="'+tid+'"]');
+      if(ri&&t){
+        t.remarks=ri.value.trim();
+        toast('Remarks saved successfully','s');
+        addFeed('Remarks updated for '+s.name.split(' ')[0]+' Task '+t.n,'amber');
+        schedSave();
+        renderContent();
+        bindDetailEvents();
+      }
+    }
   });
 }
 
@@ -885,37 +872,39 @@ function closeOv(){var w=el('ov-root');if(w)w.remove();}
 
 function openEditStaff(id){
   var s=STAFF.find(function(x){return x.id===id;});if(!s)return;
-  var roleIsCustom=ROLES.indexOf(s.role)<0;var instIsCustom=INSTS.indexOf(s.inst)<0;
+  var dept=s.department||s.inst||'';
+  var roleIsCustom=ROLES.indexOf(s.role)<0;
+  var deptIsCustom=INSTS.indexOf(dept)<0;
   var roleOpts=ROLES.map(function(r){return '<option value="'+esc(r)+'"'+(s.role===r?' selected':'')+'>'+esc(r)+'</option>';}).join('');
-  var instOpts=INSTS.map(function(r){return '<option value="'+esc(r)+'"'+(s.inst===r?' selected':'')+'>'+esc(r)+'</option>';}).join('');
+  var deptOpts=INSTS.map(function(r){return '<option value="'+esc(r)+'"'+(dept===r?' selected':'')+'>'+esc(r)+'</option>';}).join('');
   showOv('<div class="modal" onclick="event.stopPropagation()">'+
     '<div class="m-head"><div class="ava ava-md" style="background:'+gbg(s.id)+';color:'+gc(s.id)+'">'+ini(s.name)+'</div><div class="m-title">Edit Staff</div>'+
       '<button class="btn btn-out btn-sm" id="m-x" style="padding:3px 7px">&#10005;</button></div>'+
     '<div class="m-body"><div class="ml">Full Name *</div><input class="mi" id="es-name" value="'+esc(s.name)+'">'+
-      '<div class="mr2"><div><div class="ml">Email</div><input class="mi last" id="es-email" value="'+esc(s.email)+'"></div>'+
-        '<div><div class="ml">Role</div><select class="msel" id="es-role">'+roleOpts+'<option value="Other"'+(roleIsCustom?' selected':'')+'>Other (manual)</option></select>'+
-          '<div id="es-rc-w" style="'+(roleIsCustom?'':'display:none')+'"><input class="mi last" id="es-rc" placeholder="Enter role" value="'+(roleIsCustom?esc(s.role):'')+'"></div></div></div>'+
-      '<div class="ml">Institution</div>'+
-        '<select class="msel" id="es-inst">'+instOpts+'<option value="Other"'+(instIsCustom?' selected':'')+'>Other (manual)</option></select>'+
-        '<div id="es-ic-w" style="'+(instIsCustom?'':'display:none')+'"><input class="mi last" id="es-ic" placeholder="Enter institution" value="'+(instIsCustom?esc(s.inst):'')+'"></div>'+
-      '<div style="background:var(--bg2);border-radius:var(--r);padding:7px 10px;font-size:10px;color:var(--t4)">ID: <span style="font-family:var(--mono);color:var(--p2)">'+esc(s.id)+'</span></div>'+
+      '<div class="ml">Email</div><input class="mi" id="es-email" value="'+esc(s.email||'')+'">'+
+      '<div class="ml">Role / Designation</div><select class="msel" id="es-role">'+roleOpts+'<option value="Other"'+(roleIsCustom?' selected':'')+'>Other (manual)</option></select>'+
+        '<div id="es-rc-w" style="'+(roleIsCustom?'':'display:none;')+'margin-top:6px"><input class="mi last" id="es-rc" placeholder="Enter role" value="'+(roleIsCustom?esc(s.role):'')+'"></div>'+
+      '<div class="ml" style="margin-top:9px">Department / Institution</div>'+
+        '<select class="msel" id="es-dept">'+deptOpts+'<option value="Other"'+(deptIsCustom?' selected':'')+'>Other (manual)</option></select>'+
+        '<div id="es-dc-w" style="'+(deptIsCustom?'':'display:none;')+'margin-top:6px"><input class="mi last" id="es-dc" placeholder="Enter department" value="'+(deptIsCustom?esc(dept):'')+'"></div>'+
+      '<div style="background:var(--bg2);border-radius:var(--r);padding:8px 11px;font-size:11px;color:var(--t3);margin-top:12px">ID: <span style="font-family:var(--mono);color:var(--p2);font-weight:600">'+esc(s.id)+'</span></div>'+
     '</div>'+
-    '<div class="m-foot"><button class="btn btn-red btn-sm" id="es-del">&#128465; Remove</button>'+
+    '<div class="m-foot"><button class="btn btn-red btn-sm" id="es-del">Remove</button>'+
       '<div style="flex:1"></div><button class="btn btn-out btn-sm" id="es-cn">Cancel</button>'+
-      '<button class="btn btn-pri btn-sm" id="es-sv">&#10003; Save</button></div>'+
+      '<button class="btn btn-pri btn-sm" id="es-sv">Save</button></div>'+
   '</div>');
   el('m-x').onclick=closeOv;el('es-cn').onclick=closeOv;
   el('es-del').onclick=function(){closeOv();confirmRemove(id);};
-  el('es-role').onchange=function(){el('es-rc-w').style.display=(this.value==='Other'||this.value==='Other (type manually)')?'block':'none';};
-  el('es-inst').onchange=function(){el('es-ic-w').style.display=this.value==='Other'?'block':'none';};
+  el('es-role').onchange=function(){el('es-rc-w').style.display=(this.value==='Other'||this.value==='Other (manual)')?'block':'none';};
+  el('es-dept').onchange=function(){el('es-dc-w').style.display=this.value==='Other'?'block':'none';};
   el('es-sv').onclick=function(){
     var nm=(el('es-name')||{}).value||'';if(!nm.trim()){toast('Name required','w');return;}
     var role=(el('es-role')||{}).value||s.role;
-    if(role==='Other'||role==='Other (type manually)'){role=((el('es-rc')||{}).value||'').trim();if(!role){toast('Enter designation manually','w');return;}}
-    var inst=(el('es-inst')||{}).value||s.inst;
-    if(inst==='Other'){inst=((el('es-ic')||{}).value||'').trim();if(!inst){toast('Enter institution','w');return;}}
-    s.name=nm.trim();s.email=(el('es-email')||{}).value||s.email;s.role=role;s.inst=inst;
-    closeOv();toast('Updated: '+esc(s.name),'s');addFeed(s.name+' updated','amber');rLp();
+    if(role==='Other'||role==='Other (manual)'){role=((el('es-rc')||{}).value||'').trim();if(!role){toast('Enter role','w');return;}}
+    var dept=(el('es-dept')||{}).value||dept;
+    if(dept==='Other'){dept=((el('es-dc')||{}).value||'').trim();if(!dept){toast('Enter department','w');return;}}
+    s.name=nm.trim();s.email=(el('es-email')||{}).value||'';s.role=role;s.department=dept;s.inst=dept;
+    closeOv();toast('Updated: '+esc(s.name),'s');addFeed(s.name+' updated','amber');schedSave();render();
   };
 }
 
@@ -1031,7 +1020,7 @@ function setRole(r){S.role=r;S.selStaff=null;S.view='overview';render();toast('S
 // ── CONSOLIDATION BAR ────────────────────────────────────────────
 function rConsolBar(){
   var cbar=el('cbar');if(!cbar)return;
-  if(S.role!=='Director'||S.view==='staff'){cbar.style.display='none';return;}
+  if(S.role!=='Director'||S.view==='staff'||S.view==='tasks'){cbar.style.display='none';return;}
   cbar.style.display='flex';
   var active=activeStaff();
   var totalStaff=active.length;
@@ -1119,17 +1108,296 @@ function rConsolBar(){
   var cbarDate=el('cbar-date');if(cbarDate)cbarDate.onchange=function(){S.selDate=this.value;render();};
 }
 
+// ── TASK MANAGEMENT PAGE ────────────────────────────────────────
+function rTaskManagementPage(){
+  var active=activeStaff();
+  var dateFormatted=new Date(S.selDate).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
+
+  var html='<div class="dash">'+
+    '<div class="sec-h">'+
+      '<div><div class="sec-title">Task Management</div><div class="sec-sub">Assign and manage tasks for '+dateFormatted+'</div></div>'+
+      '<div class="search-box" style="margin-left:auto">'+
+        '<svg style="width:16px;height:16px;color:var(--t3);flex-shrink:0" fill="none" stroke="currentColor" viewBox="0 0 24 24">'+
+          '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>'+
+        '</svg>'+
+        '<input type="text" id="task-search" placeholder="Search staff by name, role, or department..." style="width:300px">'+
+      '</div>'+
+    '</div>'+
+    '<div class="staff-table-container">'+
+      '<table class="staff-table">'+
+        '<thead><tr>'+
+          '<th>Staff Member</th>'+
+          '<th>Role</th>'+
+          '<th>Department</th>'+
+          '<th>Tasks Today</th>'+
+          '<th style="text-align:right">Actions</th>'+
+        '</tr></thead>'+
+        '<tbody id="task-staff-tbody">';
+
+  if(active.length===0){
+    html+='<tr><td colspan="5" style="text-align:center;padding:40px;color:var(--t3)">No staff members. Add staff from Staff Management page.</td></tr>';
+  }else{
+    active.forEach(function(s){
+      var todayTasks=TASKS.filter(function(t){return t.staffId===s.id&&t.date===S.selDate;});
+      var allTasks=TASKS.filter(function(t){return t.staffId===s.id;});
+      var ini2=ini(s.name);
+      html+='<tr class="task-staff-row" data-name="'+esc(s.name).toLowerCase()+'" data-role="'+esc(s.role||'').toLowerCase()+'" data-dept="'+esc(s.department||s.inst||'').toLowerCase()+'">'+
+        '<td><div style="display:flex;align-items:center;gap:10px">'+
+          '<div class="ava ava-md" style="background:'+gbg(s.id)+';color:'+gc(s.id)+'">'+ini2+'</div>'+
+          '<div><div style="font-size:13px;font-weight:600;color:var(--text)">'+esc(s.name)+'</div>'+
+            '<div style="font-size:11px;color:var(--t3)">'+(s.email||'—')+'</div></div>'+
+        '</div></td>'+
+        '<td><span class="role-badge">'+esc(s.role||'—')+'</span></td>'+
+        '<td><span class="dept-badge">'+esc(s.department||s.inst||'—')+'</span></td>'+
+        '<td><span style="font-size:13px;font-weight:600;color:var(--p2)">'+todayTasks.length+'</span> <span style="font-size:11px;color:var(--t3)">tasks</span></td>'+
+        '<td style="text-align:right">'+
+          '<div style="display:flex;gap:6px;justify-content:flex-end">'+
+            '<button class="btn btn-out btn-sm" onclick="viewStaffTasks(\''+s.id+'\')">'+
+              '<svg style="width:14px;height:14px;margin-right:3px" fill="none" stroke="currentColor" viewBox="0 0 24 24">'+
+                '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>'+
+                '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>'+
+              '</svg>'+
+              'View Tasks ('+allTasks.length+')'+
+            '</button>'+
+            '<button class="btn btn-pri btn-sm" onclick="openAssignTask(\''+s.id+'\')">'+
+              '<svg style="width:14px;height:14px;margin-right:3px" fill="none" stroke="currentColor" viewBox="0 0 24 24">'+
+                '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>'+
+              '</svg>'+
+              'Assign Task'+
+            '</button>'+
+          '</div>'+
+        '</td>'+
+      '</tr>';
+    });
+  }
+
+  html+='</tbody></table></div></div>';
+  el('ct').innerHTML=html;
+
+  // Search functionality
+  var searchInput=el('task-search');
+  if(searchInput){
+    searchInput.oninput=function(){
+      var query=this.value.toLowerCase().trim();
+      var rows=document.querySelectorAll('.task-staff-row');
+      rows.forEach(function(row){
+        var name=row.dataset.name||'';
+        var role=row.dataset.role||'';
+        var dept=row.dataset.dept||'';
+        var matches=!query||name.includes(query)||role.includes(query)||dept.includes(query);
+        row.style.display=matches?'':'none';
+      });
+    };
+  }
+}
+
+function viewStaffTasks(id){
+  var s=STAFF.find(function(x){return x.id===id;});if(!s)return;
+  var allTasks=TASKS.filter(function(t){return t.staffId===s.id;});
+
+  // Group tasks by date
+  var tasksByDate={};
+  allTasks.forEach(function(t){
+    if(!tasksByDate[t.date])tasksByDate[t.date]=[];
+    tasksByDate[t.date].push(t);
+  });
+
+  var dates=Object.keys(tasksByDate).sort().reverse();
+
+  var tasksHTML='';
+  if(dates.length===0){
+    tasksHTML='<div style="text-align:center;padding:30px;background:var(--bg2);border-radius:8px">'+
+      '<svg style="width:48px;height:48px;color:var(--t4);margin:0 auto 12px" fill="none" stroke="currentColor" viewBox="0 0 24 24">'+
+        '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>'+
+      '</svg>'+
+      '<div style="font-size:13px;color:var(--t3);font-weight:500">No tasks assigned yet</div>'+
+    '</div>';
+  }else{
+    dates.forEach(function(date){
+      var tasks=tasksByDate[date];
+      var dateFormatted=new Date(date).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
+      var completed=tasks.filter(function(t){return t.status==='Done';}).length;
+      var total=tasks.length;
+
+      tasksHTML+='<div style="margin-bottom:16px">'+
+        '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;padding-bottom:6px;border-bottom:1.5px solid var(--border)">'+
+          '<svg style="width:16px;height:16px;color:var(--p2);flex-shrink:0" fill="none" stroke="currentColor" viewBox="0 0 24 24">'+
+            '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>'+
+          '</svg>'+
+          '<span style="font-size:13px;font-weight:600;color:var(--text)">'+dateFormatted+'</span>'+
+          '<span style="margin-left:auto;font-size:11px;color:var(--t3)">'+completed+'/'+total+' completed</span>'+
+        '</div>';
+
+      tasks.forEach(function(t){
+        var statusColor=t.status==='Done'?'var(--green)':'var(--amber)';
+        var statusBg=t.status==='Done'?'var(--glight)':'var(--alight)';
+        var actionBadge='';
+        if(t.action==='Approved'){
+          actionBadge='<span class="bdg bdg-ap" style="font-size:9px">Approved</span>';
+        }else if(t.action==='Rejected'){
+          actionBadge='<span class="bdg bdg-rj" style="font-size:9px">Rejected</span>';
+        }
+
+        tasksHTML+='<div style="background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:10px 12px;margin-bottom:6px">'+
+          '<div style="display:flex;align-items:start;gap:8px">'+
+            '<div style="width:22px;height:22px;border-radius:4px;background:var(--grad2);color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">'+t.n+'</div>'+
+            '<div style="flex:1;min-width:0">'+
+              '<div style="font-size:12px;color:var(--text);font-weight:500;line-height:1.4;margin-bottom:6px">'+esc(t.desc)+'</div>'+
+              '<div style="display:flex;gap:6px;flex-wrap:wrap">'+
+                '<span class="bdg" style="font-size:9px;background:'+statusBg+';color:'+statusColor+';border:1px solid '+statusColor+'20">'+esc(t.status)+'</span>'+
+                (t.priority?'<span class="bdg bdg-nr" style="font-size:9px">'+esc(t.priority)+'</span>':'')+
+                actionBadge+
+              '</div>'+
+              (t.remarks?'<div style="margin-top:6px;padding:6px 8px;background:var(--white);border-radius:4px;font-size:11px;color:var(--t2);border-left:2px solid var(--p3)">'+
+                '<div style="font-size:9px;font-weight:600;color:var(--t3);margin-bottom:2px">REMARKS</div>'+esc(t.remarks)+
+              '</div>':'')+
+            '</div>'+
+          '</div>'+
+        '</div>';
+      });
+
+      tasksHTML+='</div>';
+    });
+  }
+
+  showOv('<div class="modal" onclick="event.stopPropagation()" style="max-width:600px">'+
+    '<div class="m-head" style="background:var(--grad);color:#fff;border-bottom:none">'+
+      '<div class="ava ava-lg" style="background:rgba(255,255,255,.2);color:#fff;border:2px solid rgba(255,255,255,.3)">'+ini(s.name)+'</div>'+
+      '<div style="flex:1">'+
+        '<div style="font-size:16px;font-weight:700">'+esc(s.name)+'\'s Tasks</div>'+
+        '<div style="font-size:11px;opacity:.85">'+allTasks.length+' total tasks</div>'+
+      '</div>'+
+      '<button class="btn btn-out btn-sm" id="m-x" style="padding:4px 8px;background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.3);color:#fff">&#10005;</button>'+
+    '</div>'+
+    '<div class="m-body" style="max-height:500px;overflow-y:auto">'+
+      '<div style="background:var(--bg2);border:1.5px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:16px">'+
+        '<div style="font-size:13px;font-weight:600;color:var(--text)">'+esc(s.name)+'</div>'+
+        '<div style="font-size:11px;color:var(--t3)">'+esc(s.role||'—')+' · '+esc(s.department||s.inst||'—')+'</div>'+
+      '</div>'+
+      tasksHTML+
+    '</div>'+
+    '<div class="m-foot">'+
+      '<button class="btn btn-out btn-sm" id="vt-cl">Close</button>'+
+      '<button class="btn btn-pri btn-sm" onclick="closeOv();openAssignTask(\''+id+'\')">'+
+        '<svg style="width:14px;height:14px;margin-right:3px" fill="none" stroke="currentColor" viewBox="0 0 24 24">'+
+          '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>'+
+        '</svg>'+
+        'Assign New Task'+
+      '</button>'+
+    '</div>'+
+  '</div>');
+
+  el('m-x').onclick=closeOv;
+  el('vt-cl').onclick=closeOv;
+}
+
+function openAssignTask(id){
+  var s=STAFF.find(function(x){return x.id===id;});if(!s)return;
+  var existing=tasksFor(s.id,S.selDate);
+  var dateFormatted=new Date(S.selDate).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
+
+  var exRows='';
+  if(existing.length>0){
+    exRows='<div style="margin:12px 0"><div style="font-size:11px;font-weight:600;color:var(--t3);margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em">Tasks for '+dateFormatted+'</div>';
+    existing.forEach(function(t){
+      exRows+='<div style="background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:8px 11px;margin-bottom:6px">'+
+        '<div style="display:flex;align-items:start;gap:8px">'+
+          '<div style="width:20px;height:20px;border-radius:4px;background:var(--grad2);color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">'+t.n+'</div>'+
+          '<div style="flex:1;min-width:0"><div style="font-size:12px;color:var(--text);font-weight:500;line-height:1.4">'+esc(t.desc)+'</div>'+
+            '<div style="display:flex;gap:6px;margin-top:4px">'+
+              '<span class="bdg '+(t.status==='Done'?'bdg-g':'bdg-p')+'" style="font-size:9px">'+(t.status==='Done'?'Done':'Pending')+'</span>'+
+              (t.priority?'<span class="bdg bdg-nr" style="font-size:9px">'+esc(t.priority)+'</span>':'')+
+            '</div>'+
+          '</div>'+
+        '</div>'+
+      '</div>';
+    });
+    exRows+='</div>';
+  }else{
+    exRows='<div style="text-align:center;padding:20px;background:var(--bg2);border-radius:8px;margin:12px 0">'+
+      '<div style="font-size:12px;color:var(--t3)">No tasks for this date.</div>'+
+    '</div>';
+  }
+
+  showOv('<div class="modal" onclick="event.stopPropagation()" style="max-width:500px">'+
+    '<div class="m-head" style="background:var(--grad);color:#fff;border-bottom:none">'+
+      '<div class="ava ava-lg" style="background:rgba(255,255,255,.2);color:#fff;border:2px solid rgba(255,255,255,.3)">'+ini(s.name)+'</div>'+
+      '<div style="flex:1"><div style="font-size:16px;font-weight:700">'+esc(s.name)+'</div>'+
+        '<div style="font-size:11px;opacity:.85">'+dateFormatted+'</div></div>'+
+      '<button class="btn btn-out btn-sm" id="m-x" style="padding:4px 8px;background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.3);color:#fff">&#10005;</button>'+
+    '</div>'+
+    '<div class="m-body">'+
+      '<div class="ml" style="margin-bottom:6px">Staff Member</div>'+
+      '<div style="background:var(--bg2);border:1.5px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:12px">'+
+        '<div style="font-size:13px;font-weight:600;color:var(--text)">'+esc(s.name)+'</div>'+
+        '<div style="font-size:11px;color:var(--t3)">'+esc(s.role||'—')+' · '+esc(s.department||s.inst||'—')+'</div>'+
+      '</div>'+
+      exRows+
+      '<div style="border-top:1.5px solid var(--border);margin-top:16px;padding-top:16px">'+
+        '<div class="ml" style="margin-bottom:8px">New Task</div>'+
+        '<textarea class="mi" id="at-desc" placeholder="Enter task description..." style="resize:none;min-height:70px;margin-bottom:10px;line-height:1.5"></textarea>'+
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'+
+          '<div><div class="ml">Date</div><input type="date" class="mi last" id="at-date" value="'+S.selDate+'"></div>'+
+          '<div><div class="ml">Priority</div><select class="msel last" id="at-pri">'+
+            '<option value="High">High</option>'+
+            '<option value="Medium" selected>Medium</option>'+
+            '<option value="Low">Low</option>'+
+          '</select></div>'+
+        '</div>'+
+      '</div>'+
+    '</div>'+
+    '<div class="m-foot">'+
+      '<button class="btn btn-out btn-sm" id="at-cl">Close</button>'+
+      '<button class="btn btn-pri btn-sm" id="at-sv">'+
+        '<svg style="width:14px;height:14px;margin-right:3px" fill="none" stroke="currentColor" viewBox="0 0 24 24">'+
+          '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>'+
+        '</svg>'+
+        'Assign Task'+
+      '</button>'+
+    '</div>'+
+  '</div>');
+
+  el('m-x').onclick=closeOv;
+  el('at-cl').onclick=closeOv;
+  el('at-sv').onclick=function(){
+    var desc=(el('at-desc')||{}).value||'';
+    if(!desc.trim()){toast('Task description is required','w');return;}
+    var date=(el('at-date')||{}).value||S.selDate;
+    var pri=(el('at-pri')||{}).value||'Medium';
+    var ct=tasksFor(s.id,date).length;
+    TASKS.push({
+      id:++TID,
+      staffId:s.id,
+      date:date,
+      n:ct+1,
+      desc:desc.trim(),
+      status:'Pending',
+      action:'',
+      remarks:'',
+      staffRem:'',
+      priority:pri
+    });
+    toast('Task assigned to '+esc(s.name),'s');
+    addFeed('Task assigned to '+s.name+' for '+date,'blue');
+    schedSave();
+    closeOv();
+    render();
+  };
+}
+
 
 // ── RENDER ───────────────────────────────────────────────────────
 function renderContent(){
   if(S.role==='Director'){
     if(S.view==='staff')rStaffManagementPage();
+    else if(S.view==='tasks')rTaskManagementPage();
     else if(S.view==='board')rBoard();
     else if(S.view==='timeline')rTimeline();
     else if(S.view==='analytics')rAnalytics();
     else rOverview();
   } else {
     if(S.view==='staff')rStaffManagementPage();
+    else if(S.view==='tasks')rTaskManagementPage();
     else rStaffView();
   }
 }
@@ -1137,30 +1405,97 @@ function render(){rLp();rTb();rTabBar();rConsolBar();renderContent();}
 
 // ── AUTO-SAVE ────────────────────────────────────────────────────
 var _saveTimer=null;
+var _isSaving=false;
+
 function autoSave(){
+  if(_isSaving)return;
+  _isSaving=true;
+
+  var ind=el('save-ind');
+  if(ind)ind.style.opacity='1';
+
+  // Save staff data to GitHub
+  fetch('/api/staff/save',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','X-CSRF-TOKEN':document.querySelector('meta[name="csrf-token"]')?.content||''},
+    body:JSON.stringify({staff:STAFF})
+  }).then(function(r){return r.json();}).then(function(data){
+    if(!data.success){console.error('Staff save failed:',data.message);}
+  }).catch(function(e){console.error('Staff save error:',e);});
+
+  // Save tasks data to GitHub
+  fetch('/api/tasks/save',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','X-CSRF-TOKEN':document.querySelector('meta[name="csrf-token"]')?.content||''},
+    body:JSON.stringify({tasks:TASKS})
+  }).then(function(r){return r.json();}).then(function(data){
+    if(!data.success){console.error('Tasks save failed:',data.message);}
+    _isSaving=false;
+    if(ind){clearTimeout(ind._t);ind._t=setTimeout(function(){ind.style.opacity='0';},1800);}
+  }).catch(function(e){
+    console.error('Tasks save error:',e);
+    _isSaving=false;
+    if(ind)ind.style.opacity='0';
+  });
+
+  // Also save to localStorage as backup
   try{
     var snap={STAFF:STAFF,TASKS:TASKS,FEED:FEED,TID:TID,DIR:DIR,S:{role:S.role,staffId:S.staffId,selDate:S.selDate,view:S.view}};
-    localStorage.setItem('wmp_data',JSON.stringify(snap));
-    var ind=el('save-ind');
-    if(ind){ind.style.opacity='1';clearTimeout(ind._t);ind._t=setTimeout(function(){ind.style.opacity='0';},1800);}
+    localStorage.setItem('wmp_data_backup',JSON.stringify(snap));
   }catch(e){}
 }
+
 function schedSave(){clearTimeout(_saveTimer);_saveTimer=setTimeout(autoSave,800);}
+
 function restoreData(){
-  try{
-    var raw=localStorage.getItem('wmp_data');if(!raw)return false;
-    var snap=JSON.parse(raw);
-    if(snap.STAFF&&snap.STAFF.length){
-      STAFF.length=0;snap.STAFF.forEach(function(s){STAFF.push(s);});
-      TASKS.length=0;snap.TASKS.forEach(function(t){TASKS.push(t);});
-      FEED.length=0;snap.FEED.forEach(function(f){FEED.push(f);});
-      TID=snap.TID||TID;
-      if(snap.DIR){DIR.name=snap.DIR.name||DIR.name;DIR.desig=snap.DIR.desig||DIR.desig;}
-      if(snap.S){S.role=snap.S.role||S.role;S.staffId=snap.S.staffId||S.staffId;S.selDate=snap.S.selDate||S.selDate;}
-      return true;
+  var restored=false;
+
+  // Load staff data from GitHub
+  fetch('/api/staff',{
+    method:'GET',
+    headers:{'Content-Type':'application/json'}
+  }).then(function(r){return r.json();}).then(function(response){
+    if(response.success&&response.data&&response.data.length){
+      STAFF.length=0;
+      response.data.forEach(function(s){STAFF.push(s);});
+      restored=true;
+      render();
     }
-  }catch(e){}
-  return false;
+  }).catch(function(e){console.error('Staff load error:',e);});
+
+  // Load tasks data from GitHub
+  fetch('/api/tasks',{
+    method:'GET',
+    headers:{'Content-Type':'application/json'}
+  }).then(function(r){return r.json();}).then(function(response){
+    if(response.success&&response.data&&response.data.length){
+      TASKS.length=0;
+      response.data.forEach(function(t){TASKS.push(t);});
+      restored=true;
+      render();
+    }
+  }).catch(function(e){console.error('Tasks load error:',e);});
+
+  // Try localStorage backup if GitHub fails
+  if(!restored){
+    try{
+      var raw=localStorage.getItem('wmp_data_backup');
+      if(raw){
+        var snap=JSON.parse(raw);
+        if(snap.STAFF&&snap.STAFF.length){
+          STAFF.length=0;snap.STAFF.forEach(function(s){STAFF.push(s);});
+          TASKS.length=0;snap.TASKS.forEach(function(t){TASKS.push(t);});
+          FEED.length=0;snap.FEED.forEach(function(f){FEED.push(f);});
+          TID=snap.TID||TID;
+          if(snap.DIR){DIR.name=snap.DIR.name||DIR.name;DIR.desig=snap.DIR.desig||DIR.desig;}
+          if(snap.S){S.role=snap.S.role||S.role;S.staffId=snap.S.staffId||S.staffId;S.selDate=snap.S.selDate||S.selDate;}
+          restored=true;
+        }
+      }
+    }catch(e){}
+  }
+
+  return restored;
 }
 
 // Patch functions that mutate data to trigger auto-save
@@ -1237,18 +1572,12 @@ toast(restored?'Session restored':'WorkMonitor Pro ready','s');
 
 // ── USER PROFILE DROPDOWN ────────────────────────────────────────
 function toggleUserMenu(e) {
-  console.log('toggleUserMenu called');
   e.stopPropagation();
   var dropdown = document.getElementById('userDropdown');
-  console.log('Dropdown element:', dropdown);
 
-  if (!dropdown) {
-    console.error('Dropdown element not found!');
-    return;
-  }
+  if (!dropdown) return;
 
   dropdown.classList.toggle('show');
-  console.log('Dropdown classes:', dropdown.className);
 
   // Update dropdown content
   var nameEl = dropdown.querySelector('.dropdown-name');
