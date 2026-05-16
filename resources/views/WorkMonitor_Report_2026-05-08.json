@@ -1,0 +1,680 @@
+{
+  "exportDate": "2026-05-11T08:49:31.582Z",
+  "reportDate": "2026-05-08",
+  "director": {
+    "name": "Dr. A. Kumar",
+    "desig": "Director"
+  },
+  "staff": [
+    {
+      "id": "0001",
+      "name": "GM",
+      "role": "General manager",
+      "inst": "General",
+      "email": "Active",
+      "active": true
+    },
+    {
+      "id": "0002",
+      "name": "FC",
+      "role": "Finance Controller",
+      "inst": "General",
+      "email": "Active",
+      "active": true
+    },
+    {
+      "id": "0003",
+      "name": "Rajesh",
+      "role": "Finance",
+      "inst": "General",
+      "email": "",
+      "active": true
+    },
+    {
+      "id": "0004",
+      "name": "Yesodha mam",
+      "role": "Finance",
+      "inst": "General",
+      "email": "",
+      "active": true
+    },
+    {
+      "id": "0005",
+      "name": "Arun",
+      "role": "Admin",
+      "inst": "General",
+      "email": "",
+      "active": true
+    },
+    {
+      "id": "0006",
+      "name": "Madhvan",
+      "role": "Admin",
+      "inst": "General",
+      "email": "",
+      "active": true
+    },
+    {
+      "id": "0007",
+      "name": "Sasi ao",
+      "role": "Admin",
+      "inst": "General",
+      "email": "",
+      "active": true
+    },
+    {
+      "id": "0008",
+      "name": "Sathish kolpakkam",
+      "role": "Admin",
+      "inst": "General",
+      "email": "",
+      "active": true
+    },
+    {
+      "id": "0009",
+      "name": "Senapthy",
+      "role": "Admin",
+      "inst": "General",
+      "email": "",
+      "active": true
+    },
+    {
+      "id": "0010",
+      "name": "Eswar",
+      "role": "Admin",
+      "inst": "General",
+      "email": "",
+      "active": true
+    },
+    {
+      "id": "0011",
+      "name": "Riaz",
+      "role": "Admin",
+      "inst": "General",
+      "email": "",
+      "active": true
+    },
+    {
+      "id": "0012",
+      "name": "Rajlakmi",
+      "role": "Finance",
+      "inst": "General",
+      "email": "",
+      "active": true
+    },
+    {
+      "id": "0013",
+      "name": "Valarmathy",
+      "role": "Finance",
+      "inst": "General",
+      "email": "",
+      "active": true
+    },
+    {
+      "id": "0014",
+      "name": "Jayapriya",
+      "role": "Finance",
+      "inst": "General",
+      "email": "",
+      "active": true
+    },
+    {
+      "id": "0015",
+      "name": "Ramya",
+      "role": "Admin",
+      "inst": "General",
+      "email": "",
+      "active": true
+    },
+    {
+      "id": "0016",
+      "name": "Sarvnan",
+      "role": "Admin",
+      "inst": "General",
+      "email": "",
+      "active": true
+    },
+    {
+      "id": "0017",
+      "name": "Craig",
+      "role": "Admin",
+      "inst": "General",
+      "email": "",
+      "active": true
+    },
+    {
+      "id": "0018",
+      "name": "Zeenath",
+      "role": "Admin",
+      "inst": "General",
+      "email": "",
+      "active": true
+    },
+    {
+      "id": "0019",
+      "name": "Suresh Bodhi",
+      "role": "Admin",
+      "inst": "General",
+      "email": "",
+      "active": true
+    },
+    {
+      "id": "0020",
+      "name": "Aswo",
+      "role": "Admin",
+      "inst": "General",
+      "email": "",
+      "active": true
+    },
+    {
+      "id": "0021",
+      "name": "Po",
+      "role": "Admin",
+      "inst": "General",
+      "email": "",
+      "active": true
+    },
+    {
+      "id": "0022",
+      "name": "Ram Mohan sir",
+      "role": "Admin",
+      "inst": "General",
+      "email": "",
+      "active": true
+    },
+    {
+      "id": "0023",
+      "name": "Nithyakalyani",
+      "role": "Admin",
+      "inst": "General",
+      "email": "",
+      "active": true
+    },
+    {
+      "id": "0024",
+      "name": "Gopi sir",
+      "role": "Admin",
+      "inst": "General",
+      "email": "",
+      "active": true
+    },
+    {
+      "id": "0025",
+      "name": "Sathish ao",
+      "role": "Admin",
+      "inst": "General",
+      "email": "",
+      "active": true
+    },
+    {
+      "id": "0026",
+      "name": "Siva",
+      "role": "Admin",
+      "inst": "General",
+      "email": "",
+      "active": true
+    },
+    {
+      "id": "0027",
+      "name": "Andhabhaakar",
+      "role": "Academics",
+      "inst": "General",
+      "email": "",
+      "active": true
+    },
+    {
+      "id": "0028",
+      "name": "Guna",
+      "role": "Academics",
+      "inst": "General",
+      "email": "",
+      "active": true
+    },
+    {
+      "id": "0029",
+      "name": "Erode jayraj",
+      "role": "Academics",
+      "inst": "General",
+      "email": "",
+      "active": true
+    },
+    {
+      "id": "0030",
+      "name": "Arun Ramaswamy",
+      "role": "Academics",
+      "inst": "General",
+      "email": "",
+      "active": true
+    },
+    {
+      "id": "0031",
+      "name": "Sondrajan",
+      "role": "Academics",
+      "inst": "General",
+      "email": "",
+      "active": true
+    },
+    {
+      "id": "0032",
+      "name": "Hema mam",
+      "role": "Academics",
+      "inst": "General",
+      "email": "",
+      "active": true
+    },
+    {
+      "id": "0033",
+      "name": "Bhivesh",
+      "role": "ECA",
+      "inst": "General",
+      "email": "",
+      "active": true
+    },
+    {
+      "id": "0034",
+      "name": "Shankar",
+      "role": "Sports",
+      "inst": "General",
+      "email": "",
+      "active": true
+    },
+    {
+      "id": "0035",
+      "name": "Suresh",
+      "role": "Sports",
+      "inst": "General",
+      "email": "",
+      "active": true
+    },
+    {
+      "id": "0036",
+      "name": "Suresh",
+      "role": "Sports",
+      "inst": "General",
+      "email": "",
+      "active": true
+    },
+    {
+      "id": "0037",
+      "name": "Devraj",
+      "role": "Admin",
+      "inst": "General",
+      "email": "",
+      "active": true
+    },
+    {
+      "id": "0038",
+      "name": "Kanchiipueam Suresh",
+      "role": "Academics",
+      "inst": "General",
+      "email": "",
+      "active": true
+    },
+    {
+      "id": "0039",
+      "name": "Zonal heads",
+      "role": "Admin",
+      "inst": "General",
+      "email": "",
+      "active": true
+    },
+    {
+      "id": "0040",
+      "name": "Chidambaram ao",
+      "role": "Admin",
+      "inst": "General",
+      "email": "",
+      "active": true
+    },
+    {
+      "id": "0041",
+      "name": "Ulagu",
+      "role": "Admin",
+      "inst": "General",
+      "email": "",
+      "active": true
+    },
+    {
+      "id": "0042",
+      "name": "Kalai",
+      "role": "Food",
+      "inst": "General",
+      "email": "",
+      "active": true
+    },
+    {
+      "id": "0043",
+      "name": "Raju",
+      "role": "Admin",
+      "inst": "General",
+      "email": "",
+      "active": true
+    },
+    {
+      "id": "0044",
+      "name": "Sulaiman",
+      "role": "Food",
+      "inst": "General",
+      "email": "",
+      "active": true
+    },
+    {
+      "id": "0045",
+      "name": "Yuvaraj",
+      "role": "Admin",
+      "inst": "General",
+      "email": "",
+      "active": true
+    },
+    {
+      "id": "0046",
+      "name": "Murgandham",
+      "role": "Admin",
+      "inst": "General",
+      "email": "",
+      "active": true
+    },
+    {
+      "id": "0047",
+      "name": "Murgan hm",
+      "role": "Admin",
+      "inst": "General",
+      "email": "",
+      "active": true
+    },
+    {
+      "id": "0048",
+      "name": "Ao Prabhu",
+      "role": "Admin",
+      "inst": "General",
+      "email": "",
+      "active": true
+    },
+    {
+      "id": "0049",
+      "name": "Anbhu",
+      "role": "Admin",
+      "inst": "General",
+      "email": "",
+      "active": true
+    },
+    {
+      "id": "0050",
+      "name": "CCTV",
+      "role": "Admin",
+      "inst": "General",
+      "email": "",
+      "active": true
+    },
+    {
+      "id": "0051",
+      "name": "Zone safety heads",
+      "role": "Admin",
+      "inst": "General",
+      "email": "",
+      "active": true
+    },
+    {
+      "id": "0052",
+      "name": "Dewen sir",
+      "role": "Active",
+      "inst": "General",
+      "email": "",
+      "active": true
+    },
+    {
+      "id": "0053",
+      "name": "Vp mam",
+      "role": "Active",
+      "inst": "General",
+      "email": "",
+      "active": true
+    },
+    {
+      "id": "0054",
+      "name": "Dheeraj",
+      "role": "Active",
+      "inst": "General",
+      "email": "",
+      "active": true
+    },
+    {
+      "id": "0055",
+      "name": "Anu",
+      "role": "Active",
+      "inst": "General",
+      "email": "",
+      "active": true
+    },
+    {
+      "id": "0056",
+      "name": "Vignesh",
+      "role": "Active",
+      "inst": "General",
+      "email": "",
+      "active": true
+    },
+    {
+      "id": "0057",
+      "name": "Dillibabu",
+      "role": "Active",
+      "inst": "General",
+      "email": "",
+      "active": true
+    },
+    {
+      "id": "0058",
+      "name": "Prabhu Pondy",
+      "role": "Active",
+      "inst": "General",
+      "email": "",
+      "active": true
+    },
+    {
+      "id": "0059",
+      "name": "Saran",
+      "role": "Active",
+      "inst": "General",
+      "email": "",
+      "active": true
+    },
+    {
+      "id": "0060",
+      "name": "Mubarak",
+      "role": "Active",
+      "inst": "General",
+      "email": "",
+      "active": true
+    },
+    {
+      "id": "0061",
+      "name": "Salem ped",
+      "role": "Active",
+      "inst": "General",
+      "email": "",
+      "active": true
+    },
+    {
+      "id": "0062",
+      "name": "Admissions Sangeetha Hema raghu",
+      "role": "Active",
+      "inst": "General",
+      "email": "",
+      "active": true
+    },
+    {
+      "id": "0063",
+      "name": "Focus school heads",
+      "role": "Active",
+      "inst": "General",
+      "email": "",
+      "active": true
+    },
+    {
+      "id": "0064",
+      "name": "Venila mam",
+      "role": "Active",
+      "inst": "General",
+      "email": "",
+      "active": true
+    },
+    {
+      "id": "0065",
+      "name": "Cc team",
+      "role": "Active",
+      "inst": "General",
+      "email": "",
+      "active": true
+    },
+    {
+      "id": "0066",
+      "name": "Dhamidhar",
+      "role": "Active",
+      "inst": "General",
+      "email": "",
+      "active": true
+    },
+    {
+      "id": "0067",
+      "name": "Selva and Murli",
+      "role": "Active",
+      "inst": "General",
+      "email": "",
+      "active": true
+    },
+    {
+      "id": "0068",
+      "name": "Kotewaera sir",
+      "role": "Active",
+      "inst": "General",
+      "email": "",
+      "active": true
+    },
+    {
+      "id": "0069",
+      "name": "Ology school team",
+      "role": "Active",
+      "inst": "General",
+      "email": "",
+      "active": true
+    },
+    {
+      "id": "0070",
+      "name": "Bangalore team",
+      "role": "Active",
+      "inst": "General",
+      "email": "",
+      "active": true
+    },
+    {
+      "id": "0071",
+      "name": "Thilga mam",
+      "role": "Active",
+      "inst": "General",
+      "email": "",
+      "active": true
+    },
+    {
+      "id": "0072",
+      "name": "Shunmugan sir and Jerome sir",
+      "role": "Active",
+      "inst": "General",
+      "email": "",
+      "active": true
+    },
+    {
+      "id": "0073",
+      "name": "Srpl admin",
+      "role": "Active",
+      "inst": "General",
+      "email": "",
+      "active": true
+    },
+    {
+      "id": "0074",
+      "name": "Srpl sir",
+      "role": "Active",
+      "inst": "General",
+      "email": "",
+      "active": true
+    },
+    {
+      "id": "0075",
+      "name": "Meyappan",
+      "role": "Active",
+      "inst": "General",
+      "email": "",
+      "active": true
+    },
+    {
+      "id": "0076",
+      "name": "Sri lekaha",
+      "role": "Finance",
+      "inst": "General",
+      "email": "",
+      "active": true
+    },
+    {
+      "id": "0077",
+      "name": "Rajesh engineer",
+      "role": "Active",
+      "inst": "General",
+      "email": "",
+      "active": true
+    },
+    {
+      "id": "0078",
+      "name": "Naresh",
+      "role": "Active",
+      "inst": "General",
+      "email": "",
+      "active": true
+    },
+    {
+      "id": "0079",
+      "name": "Mr vishal",
+      "role": "Active",
+      "inst": "General",
+      "email": "",
+      "active": true
+    },
+    {
+      "id": "0080",
+      "name": "Chakravarthy sir",
+      "role": "Active",
+      "inst": "General",
+      "email": "",
+      "active": true
+    },
+    {
+      "id": "0081",
+      "name": "Suresh rsa",
+      "role": "Admin",
+      "inst": "General",
+      "email": "",
+      "active": true
+    },
+    {
+      "id": "0082",
+      "name": "Murli sir",
+      "role": "ECA",
+      "inst": "General",
+      "email": "",
+      "active": true
+    }
+  ],
+  "tasks": [
+    {
+      "id": 103,
+      "staffId": "0001",
+      "date": "2026-05-08",
+      "n": 1,
+      "desc": "Invoice Checking",
+      "status": "Pending",
+      "action": "Approved",
+      "remarks": "",
+      "staffRem": "",
+      "priority": "High"
+    }
+  ]
+}
