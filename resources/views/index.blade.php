@@ -157,5 +157,13 @@ var AUTH_USER = {
 };
 </script>
 <script src="{{ asset('js/workmonitor.js') }}?v={{ time() }}"></script>
+@if(session('login_success'))
+<script>
+// Show login success toast
+setTimeout(function() {
+  toast('{{ session('login_success') }}', 's');
+}, 500);
+</script>
+@endif
 </body>
 </html>

@@ -248,46 +248,6 @@
             height: 20px;
         }
 
-        .form-options {
-            display: flex;
-            justify-content: flex-end;
-            align-items: center;
-            margin-bottom: 32px;
-            animation: fadeInUp 0.8s ease-out 0.4s backwards;
-        }
-
-        .checkbox-wrapper {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .custom-checkbox {
-            width: 20px;
-            height: 20px;
-            cursor: pointer;
-            accent-color: #0891B2;
-        }
-
-        .checkbox-label {
-            font-size: 14px;
-            color: #475569;
-            cursor: pointer;
-            font-weight: 500;
-        }
-
-        .forgot-link {
-            color: #0891B2;
-            text-decoration: none;
-            font-size: 14px;
-            font-weight: 600;
-            transition: all 0.3s ease;
-        }
-
-        .forgot-link:hover {
-            color: #0369A1;
-            text-decoration: underline;
-        }
 
         .btn-submit {
             width: 100%;
@@ -525,11 +485,7 @@
                         @enderror
                     </div>
 
-                    <div class="form-options">
-                        <a href="#" class="forgot-link">Forgot Password?</a>
-                    </div>
-
-                    <button type="submit" class="btn-submit">Sign In</button>
+                    <button type="submit" class="btn-submit" style="margin-top: 32px;">Sign In</button>
                 </form>
 
                 <div class="form-footer">

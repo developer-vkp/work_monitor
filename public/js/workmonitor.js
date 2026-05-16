@@ -25,7 +25,7 @@ function addFeed(msg,col){FEED.unshift({id:++TID,msg:msg,col:col||'blue',time:ne
 var S={role:'Director',staffId:'ST001',selStaff:null,selDate:_today,
   view:'overview',  // overview | board | timeline | analytics
   boardFilter:'all',boardSearch:'',boardCollapsed:{},boardDp:null,
-  showAddForm:false};
+  showAddForm:false,taskFromDate:_today,taskToDate:_today};
 var _newStaff={name:'',email:'',role:'',inst:''};
 var _editSD={};
 
@@ -216,7 +216,7 @@ function rStaffManagementPage(){
       return '<tr>'+
         '<td>'+
           '<div style="display:flex;align-items:center;gap:10px">'+
-            '<div class="ava" style="background:var(--grad);color:#fff">'+initials+'</div>'+
+            '<div class="ava ava-md" style="background:var(--grad);color:#fff">'+initials+'</div>'+
             '<div>'+
               '<div style="font-size:13px;font-weight:600;color:var(--t1)">'+esc(s.name)+'</div>'+
               '<div style="font-size:11px;color:var(--t3)">'+(s.email||'')+'</div>'+
@@ -405,6 +405,8 @@ function rBoard(){
     var rj=ts.filter(function(t){return t.action==='Rejected';}).length;
     var pn=ts.filter(function(t){return !t.action;}).length;
     var stripe=PAL[gi%PAL.length];
+    // Initialize collapsed state - default to collapsed
+    if(S.boardCollapsed[s.id]===undefined)S.boardCollapsed[s.id]=true;
     var coll=S.boardCollapsed[s.id];
     var rowsHTML='';
     if(!coll){
@@ -457,34 +459,7 @@ function rBoard(){
     '</div>'+
     (groups||'<div style="text-align:center;padding:40px;color:var(--t4);font-size:13px">No tasks match the current filter.</div>')+
   '</div>';
-  // Bind board events
-  el('ct').addEventListener('click',function(e){
-    // filter pills
-    var pill=e.target.closest('[data-filter]');if(pill){S.boardFilter=pill.dataset.filter;rBoard();return;}
-    // group toggle
-    var grp=e.target.closest('[data-grp]');if(grp){var gid=grp.dataset.grp;S.boardCollapsed[gid]=!S.boardCollapsed[gid];rBoard();return;}
-    // action dropdown toggle
-    var dpBtn=e.target.closest('[data-dpid]');if(dpBtn){S.boardDp=S.boardDp===parseInt(dpBtn.dataset.dpid)?null:parseInt(dpBtn.dataset.dpid);rBoard();return;}
-    // dropdown actions
-    var dpAct=e.target.closest('[data-act][data-tid]');if(dpAct){
-      var act=dpAct.dataset.act;var tid=parseInt(dpAct.dataset.tid);
-      var t=TASKS.find(function(x){return x.id===tid;});if(!t)return;
-      var s=STAFF.find(function(x){return x.id===t.staffId;});
-      if(act==='ap'){t.action='Approved';toast(s.name+' Task '+t.n+' Approved','s');addFeed(s.name.split(' ')[0]+' Task '+t.n+' Approved','green');S.boardDp=null;rBoard();}
-      else if(act==='rj'){t.action='Rejected';toast(s.name+' Task '+t.n+' Rejected','e');addFeed(s.name.split(' ')[0]+' Task '+t.n+' Rejected','red');S.boardDp=null;rBoard();}
-      else if(act==='cl'){t.action='';S.boardDp=null;rBoard();toast('Cleared','i');}
-      else if(act==='rm'||act==='rv'){
-        var sv=e.target.closest('[data-sid]');
-        if(sv){S.selStaff=sv.dataset.sid;}else{S.selStaff=t.staffId;}
-        S.boardDp=null;rBoard();
-      }
-      return;
-    }
-    // review button
-    var rvBtn=e.target.closest('[data-act="rv"]');if(rvBtn){var sid=rvBtn.dataset.sid;if(sid){S.selStaff=sid;rBoard();}return;}
-    // close dp if clicking elsewhere
-    if(S.boardDp){S.boardDp=null;rBoard();}
-  });
+  // Bind search
   var bdSrch=el('bd-srch');if(bdSrch)bdSrch.oninput=function(){S.boardSearch=this.value;rBoard();};
 }
 
@@ -616,7 +591,31 @@ function rStaffDetail(sid){
     var rc=t.action==='Approved'?' ta':t.action==='Rejected'?' tr':'';
     return '<div class="trow'+rc+'"><div class="trow-n">'+n+'</div>'+
       '<div class="trow-body">'+
-        '<div class="trow-desc">'+esc(t.desc)+'</div>'+
+        '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'+
+          '<div class="trow-desc" style="margin:0;flex:1">'+esc(t.desc)+'</div>'+
+          '<div style="display:flex;gap:4px;flex-shrink:0">'+
+            '<button class="btn-icon btn-icon-grn" title="Approve" style="'+(t.action==='Approved'?'background:var(--green);color:#fff;':'')+'" data-act="approve" data-tid="'+t.id+'">'+
+              '<svg style="width:14px;height:14px" fill="none" stroke="currentColor" viewBox="0 0 24 24">'+
+                '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>'+
+              '</svg>'+
+            '</button>'+
+            '<button class="btn-icon btn-icon-red" title="Reject" style="'+(t.action==='Rejected'?'background:var(--red);color:#fff;':'')+'" data-act="reject" data-tid="'+t.id+'">'+
+              '<svg style="width:14px;height:14px" fill="none" stroke="currentColor" viewBox="0 0 24 24">'+
+                '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>'+
+              '</svg>'+
+            '</button>'+
+            (t.action?'<button class="btn-icon" title="Clear" data-act="clear" data-tid="'+t.id+'">'+
+              '<svg style="width:14px;height:14px" fill="none" stroke="currentColor" viewBox="0 0 24 24">'+
+                '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>'+
+              '</svg>'+
+            '</button>':'')+
+            '<button class="btn-icon btn-icon-pri" title="Save Remarks" data-act="savrem" data-tid="'+t.id+'">'+
+              '<svg style="width:14px;height:14px" fill="none" stroke="currentColor" viewBox="0 0 24 24">'+
+                '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path>'+
+              '</svg>'+
+            '</button>'+
+          '</div>'+
+        '</div>'+
         '<div class="trow-meta">'+
           '<span class="bdg '+(t.status==='Done'?'bdg-g':'bdg-p')+'">'+(t.status==='Done'?'Done':'Pending')+'</span>'+
           '<span style="font-size:10px;color:'+( t.priority==='High'?'var(--red)':t.priority==='Medium'?'var(--amber)':'var(--green)')+'">'+esc(t.priority)+'</span>'+
@@ -629,29 +628,6 @@ function rStaffDetail(sid){
         '<div style="margin-top:8px">'+
           '<div style="font-size:10px;font-weight:600;color:var(--t3);margin-bottom:4px">Add/Edit Remarks:</div>'+
           '<textarea class="rem-ta" data-remid="'+t.id+'" placeholder="Remarks for '+esc(s.name.split(' ')[0])+'..." style="width:100%;min-height:60px;resize:vertical">'+esc(t.remarks||'')+'</textarea>'+
-        '</div>'+
-      '</div>'+
-      '<div class="trow-right">'+
-        '<div style="display:flex;flex-direction:column;gap:6px;width:100%">'+
-          '<button class="btn btn-grn btn-xs" style="'+(t.action==='Approved'?'background:var(--green);color:#fff;border-color:var(--green);':'')+';width:100%" data-act="approve" data-tid="'+t.id+'">'+
-            '<svg style="width:12px;height:12px;margin-right:3px" fill="none" stroke="currentColor" viewBox="0 0 24 24">'+
-              '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>'+
-            '</svg>'+
-            'Approve'+
-          '</button>'+
-          '<button class="btn btn-red btn-xs" style="'+(t.action==='Rejected'?'background:var(--red);color:#fff;border-color:var(--red);':'')+';width:100%" data-act="reject" data-tid="'+t.id+'">'+
-            '<svg style="width:12px;height:12px;margin-right:3px" fill="none" stroke="currentColor" viewBox="0 0 24 24">'+
-              '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>'+
-            '</svg>'+
-            'Reject'+
-          '</button>'+
-          (t.action?'<button class="btn btn-out btn-xs" style="width:100%" data-act="clear" data-tid="'+t.id+'">Clear</button>':'')+
-          '<button class="btn btn-pri btn-xs" style="width:100%" data-act="savrem" data-tid="'+t.id+'">'+
-            '<svg style="width:12px;height:12px;margin-right:3px" fill="none" stroke="currentColor" viewBox="0 0 24 24">'+
-              '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path>'+
-            '</svg>'+
-            'Save Remarks'+
-          '</button>'+
         '</div>'+
       '</div>'+
     '</div>';
@@ -1075,12 +1051,6 @@ function rConsolBar(){
             '</svg>'+
             'PDF'+
           '</button>'+
-          '<button class="download-dropdown-item" id="exp-json">'+
-            '<svg style="width:14px;height:14px" fill="none" stroke="currentColor" viewBox="0 0 24 24">'+
-              '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path>'+
-            '</svg>'+
-            'JSON'+
-          '</button>'+
         '</div>'+
       '</div>'+
     '</div>';
@@ -1102,7 +1072,6 @@ function rConsolBar(){
 
   var eXl=el('exp-xlsx');if(eXl)eXl.onclick=function(){exportReport('xlsx');if(downloadMenu)downloadMenu.classList.remove('show');};
   var ePdf=el('exp-pdf');if(ePdf)ePdf.onclick=function(){exportReport('pdf');if(downloadMenu)downloadMenu.classList.remove('show');};
-  var eJs=el('exp-json');if(eJs)eJs.onclick=function(){exportReport('json');if(downloadMenu)downloadMenu.classList.remove('show');};
 
   // Date picker handler
   var cbarDate=el('cbar-date');if(cbarDate)cbarDate.onchange=function(){S.selDate=this.value;render();};
@@ -1111,16 +1080,25 @@ function rConsolBar(){
 // ── TASK MANAGEMENT PAGE ────────────────────────────────────────
 function rTaskManagementPage(){
   var active=activeStaff();
-  var dateFormatted=new Date(S.selDate).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
 
   var html='<div class="dash">'+
     '<div class="sec-h">'+
-      '<div><div class="sec-title">Task Management</div><div class="sec-sub">Assign and manage tasks for '+dateFormatted+'</div></div>'+
-      '<div class="search-box" style="margin-left:auto">'+
-        '<svg style="width:16px;height:16px;color:var(--t3);flex-shrink:0" fill="none" stroke="currentColor" viewBox="0 0 24 24">'+
-          '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>'+
-        '</svg>'+
-        '<input type="text" id="task-search" placeholder="Search staff by name, role, or department..." style="width:300px">'+
+      '<div><div class="sec-title">Task Management</div><div class="sec-sub">Assign and manage tasks within date range</div></div>'+
+      '<div style="display:flex;align-items:center;gap:12px;margin-left:auto">'+
+        '<div style="display:flex;align-items:center;gap:8px">'+
+          '<label style="font-size:12px;font-weight:600;color:var(--t2);white-space:nowrap">From:</label>'+
+          '<input type="date" class="date-inp" id="task-from-date" value="'+S.taskFromDate+'" style="width:140px">'+
+        '</div>'+
+        '<div style="display:flex;align-items:center;gap:8px">'+
+          '<label style="font-size:12px;font-weight:600;color:var(--t2);white-space:nowrap">To:</label>'+
+          '<input type="date" class="date-inp" id="task-to-date" value="'+S.taskToDate+'" style="width:140px">'+
+        '</div>'+
+        '<div class="search-box">'+
+          '<svg style="width:16px;height:16px;color:var(--t3);flex-shrink:0" fill="none" stroke="currentColor" viewBox="0 0 24 24">'+
+            '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>'+
+          '</svg>'+
+          '<input type="text" id="task-search" placeholder="Search staff..." style="width:200px">'+
+        '</div>'+
       '</div>'+
     '</div>'+
     '<div class="staff-table-container">'+
@@ -1129,7 +1107,7 @@ function rTaskManagementPage(){
           '<th>Staff Member</th>'+
           '<th>Role</th>'+
           '<th>Department</th>'+
-          '<th>Tasks Today</th>'+
+          '<th>Tasks in Range</th>'+
           '<th style="text-align:right">Actions</th>'+
         '</tr></thead>'+
         '<tbody id="task-staff-tbody">';
@@ -1138,8 +1116,9 @@ function rTaskManagementPage(){
     html+='<tr><td colspan="5" style="text-align:center;padding:40px;color:var(--t3)">No staff members. Add staff from Staff Management page.</td></tr>';
   }else{
     active.forEach(function(s){
-      var todayTasks=TASKS.filter(function(t){return t.staffId===s.id&&t.date===S.selDate;});
-      var allTasks=TASKS.filter(function(t){return t.staffId===s.id;});
+      var dateRangeTasks=TASKS.filter(function(t){
+        return t.staffId===s.id&&t.date>=S.taskFromDate&&t.date<=S.taskToDate;
+      });
       var ini2=ini(s.name);
       html+='<tr class="task-staff-row" data-name="'+esc(s.name).toLowerCase()+'" data-role="'+esc(s.role||'').toLowerCase()+'" data-dept="'+esc(s.department||s.inst||'').toLowerCase()+'">'+
         '<td><div style="display:flex;align-items:center;gap:10px">'+
@@ -1149,7 +1128,7 @@ function rTaskManagementPage(){
         '</div></td>'+
         '<td><span class="role-badge">'+esc(s.role||'—')+'</span></td>'+
         '<td><span class="dept-badge">'+esc(s.department||s.inst||'—')+'</span></td>'+
-        '<td><span style="font-size:13px;font-weight:600;color:var(--p2)">'+todayTasks.length+'</span> <span style="font-size:11px;color:var(--t3)">tasks</span></td>'+
+        '<td><span style="font-size:13px;font-weight:600;color:var(--p2)">'+dateRangeTasks.length+'</span> <span style="font-size:11px;color:var(--t3)">tasks</span></td>'+
         '<td style="text-align:right">'+
           '<div style="display:flex;gap:6px;justify-content:flex-end">'+
             '<button class="btn btn-out btn-sm" onclick="viewStaffTasks(\''+s.id+'\')">'+
@@ -1157,7 +1136,7 @@ function rTaskManagementPage(){
                 '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>'+
                 '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>'+
               '</svg>'+
-              'View Tasks ('+allTasks.length+')'+
+              'View Tasks ('+dateRangeTasks.length+')'+
             '</button>'+
             '<button class="btn btn-pri btn-sm" onclick="openAssignTask(\''+s.id+'\')">'+
               '<svg style="width:14px;height:14px;margin-right:3px" fill="none" stroke="currentColor" viewBox="0 0 24 24">'+
@@ -1173,6 +1152,30 @@ function rTaskManagementPage(){
 
   html+='</tbody></table></div></div>';
   el('ct').innerHTML=html;
+
+  // Date range handlers
+  var fromDateInput=el('task-from-date');
+  var toDateInput=el('task-to-date');
+  if(fromDateInput){
+    fromDateInput.onchange=function(){
+      S.taskFromDate=this.value;
+      // Ensure from date is not after to date
+      if(S.taskFromDate>S.taskToDate){
+        S.taskToDate=S.taskFromDate;
+      }
+      rTaskManagementPage();
+    };
+  }
+  if(toDateInput){
+    toDateInput.onchange=function(){
+      S.taskToDate=this.value;
+      // Ensure to date is not before from date
+      if(S.taskToDate<S.taskFromDate){
+        S.taskFromDate=S.taskToDate;
+      }
+      rTaskManagementPage();
+    };
+  }
 
   // Search functionality
   var searchInput=el('task-search');
@@ -1193,7 +1196,10 @@ function rTaskManagementPage(){
 
 function viewStaffTasks(id){
   var s=STAFF.find(function(x){return x.id===id;});if(!s)return;
-  var allTasks=TASKS.filter(function(t){return t.staffId===s.id;});
+  // Filter tasks by staff and date range
+  var allTasks=TASKS.filter(function(t){
+    return t.staffId===s.id&&t.date>=S.taskFromDate&&t.date<=S.taskToDate;
+  });
 
   // Group tasks by date
   var tasksByDate={};
@@ -1260,12 +1266,16 @@ function viewStaffTasks(id){
     });
   }
 
+  var fromFormatted=new Date(S.taskFromDate).toLocaleDateString('en-IN',{day:'2-digit',month:'short'});
+  var toFormatted=new Date(S.taskToDate).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
+  var dateRangeStr=S.taskFromDate===S.taskToDate?fromFormatted:fromFormatted+' - '+toFormatted;
+
   showOv('<div class="modal" onclick="event.stopPropagation()" style="max-width:600px">'+
     '<div class="m-head" style="background:var(--grad);color:#fff;border-bottom:none">'+
       '<div class="ava ava-lg" style="background:rgba(255,255,255,.2);color:#fff;border:2px solid rgba(255,255,255,.3)">'+ini(s.name)+'</div>'+
       '<div style="flex:1">'+
         '<div style="font-size:16px;font-weight:700">'+esc(s.name)+'\'s Tasks</div>'+
-        '<div style="font-size:11px;opacity:.85">'+allTasks.length+' total tasks</div>'+
+        '<div style="font-size:11px;opacity:.85">'+allTasks.length+' tasks · '+dateRangeStr+'</div>'+
       '</div>'+
       '<button class="btn btn-out btn-sm" id="m-x" style="padding:4px 8px;background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.3);color:#fff">&#10005;</button>'+
     '</div>'+
@@ -1568,7 +1578,46 @@ function exportReport(fmt){
 
 var restored=restoreData();
 render();
-toast(restored?'Session restored':'WorkMonitor Pro ready','s');
+
+// ── GLOBAL EVENT HANDLERS ────────────────────────────────────────
+// Board click events (attached once to avoid duplicates)
+document.addEventListener('click',function(e){
+  var ct=el('ct');if(!ct)return;
+  // Check if click is within content area
+  if(!ct.contains(e.target))return;
+
+  // filter pills
+  var pill=e.target.closest('[data-filter]');if(pill){S.boardFilter=pill.dataset.filter;rBoard();return;}
+  // action dropdown toggle
+  var dpBtn=e.target.closest('[data-dpid]');if(dpBtn){S.boardDp=S.boardDp===parseInt(dpBtn.dataset.dpid)?null:parseInt(dpBtn.dataset.dpid);rBoard();return;}
+  // dropdown actions
+  var dpAct=e.target.closest('[data-act][data-tid]');if(dpAct){
+    var act=dpAct.dataset.act;var tid=parseInt(dpAct.dataset.tid);
+    var t=TASKS.find(function(x){return x.id===tid;});if(!t)return;
+    var s=STAFF.find(function(x){return x.id===t.staffId;});
+    if(act==='ap'){t.action='Approved';toast(s.name+' Task '+t.n+' Approved','s');addFeed(s.name.split(' ')[0]+' Task '+t.n+' Approved','green');S.boardDp=null;rBoard();autoSave();}
+    else if(act==='rj'){t.action='Rejected';toast(s.name+' Task '+t.n+' Rejected','e');addFeed(s.name.split(' ')[0]+' Task '+t.n+' Rejected','red');S.boardDp=null;rBoard();autoSave();}
+    else if(act==='cl'){t.action='';S.boardDp=null;rBoard();toast('Cleared','i');autoSave();}
+    else if(act==='rm'||act==='rv'){
+      var sv=e.target.closest('[data-sid]');
+      if(sv){S.selStaff=sv.dataset.sid;}else{S.selStaff=t.staffId;}
+      S.boardDp=null;rBoard();
+    }
+    return;
+  }
+  // group toggle
+  var grp=e.target.closest('[data-grp]');
+  if(grp){
+    var gid=grp.dataset.grp;
+    S.boardCollapsed[gid]=!S.boardCollapsed[gid];
+    rBoard();
+    return;
+  }
+  // review button
+  var rvBtn=e.target.closest('[data-act="rv"]');if(rvBtn){var sid=rvBtn.dataset.sid;if(sid){S.selStaff=sid;rBoard();}return;}
+  // close dp if clicking elsewhere
+  if(S.boardDp){S.boardDp=null;rBoard();}
+});
 
 // ── USER PROFILE DROPDOWN ────────────────────────────────────────
 function toggleUserMenu(e) {
