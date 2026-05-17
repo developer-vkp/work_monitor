@@ -7,7 +7,7 @@ use App\Http\Controllers\StaffDataController;
 use App\Http\Controllers\TaskDataController;
 
 Route::get('/', function () {
-    return view('welcome');
+    return redirect()->route('admin.login');
 });
 
 // Admin Login Routes
