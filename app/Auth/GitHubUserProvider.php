@@ -22,7 +22,8 @@ class GitHubUserProvider implements UserProvider
         $users = $this->getAllUsers();
 
         foreach ($users as $userData) {
-            if ($userData['id'] === $identifier) {
+            // Compare both as strings to handle type mismatches
+            if ((string)$userData['id'] === (string)$identifier) {
                 return $this->createUserModel($userData);
             }
         }
@@ -80,12 +81,20 @@ class GitHubUserProvider implements UserProvider
     protected function createUserModel(array $userData)
     {
         $user = new User();
-        $user->id = $userData['id'];
-        $user->name = $userData['name'];
-        $user->email = $userData['email'];
-        $user->role = $userData['role'] ?? 'user';
-        $user->password = $userData['password'];
+
+        // Use forceFill to bypass mutators and casts
+        $user->forceFill([
+            'id' => $userData['id'],
+            'name' => $userData['name'],
+            'email' => $userData['email'],
+            'role' => $userData['role'] ?? 'user',
+            'password' => $userData['password'], // Already hashed
+        ]);
+
+        // Mark as existing to prevent save attempts
         $user->exists = true;
+        $user->wasRecentlyCreated = false;
+        $user->syncOriginal(); // Sync attributes to prevent dirty checks
 
         return $user;
     }
