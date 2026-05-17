@@ -3,6 +3,9 @@
 namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Facades\Auth;
+use App\Auth\GitHubUserProvider;
+use App\Services\GitHubStorageService;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -19,6 +22,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        // Register custom GitHub user provider
+        Auth::provider('github', function ($app, array $config) {
+            return new GitHubUserProvider($app->make(GitHubStorageService::class));
+        });
     }
 }
