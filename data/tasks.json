@@ -47,18 +47,6 @@
             "remarks": null,
             "staffRem": null,
             "priority": "Medium"
-        },
-        {
-            "id": 123,
-            "staffId": "U1779100079",
-            "date": "2026-05-16",
-            "n": 1,
-            "desc": "New Task",
-            "status": "Done",
-            "action": "Approved",
-            "remarks": null,
-            "staffRem": null,
-            "priority": "Medium"
         }
     ]
 }
