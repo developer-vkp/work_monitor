@@ -1282,6 +1282,42 @@ function markTaskDone(taskId){
   );
 }
 
+// Delete task (Admin only)
+function deleteTask(taskId,staffName){
+  var task=TASKS.find(function(t){return t.id===taskId;});
+  if(!task)return;
+
+  // Show custom confirmation modal
+  showConfirmDialog(
+    'Delete Task?',
+    'Are you sure you want to delete this task: "'+esc(task.desc)+'"? This action cannot be undone.',
+    function(){
+      // On confirm - remove task from TASKS array
+      var taskIndex=TASKS.findIndex(function(t){return t.id===taskId;});
+      if(taskIndex>-1){
+        TASKS.splice(taskIndex,1);
+        toast('Task deleted successfully!','s');
+        addFeed('Task deleted: '+task.desc,'red');
+        schedSave();
+
+        // Close modal and refresh the view
+        closeOv();
+
+        // Refresh based on current view
+        if(S.view==='tasks'){
+          if(AUTH_USER.isAdmin){
+            rTaskManagementPage();
+          }else{
+            showMyTasks();
+          }
+        }else{
+          render();
+        }
+      }
+    }
+  );
+}
+
 // Custom confirmation dialog
 function showConfirmDialog(title,message,onConfirm){
   var html='<div class="modal" onclick="event.stopPropagation()" style="max-width:450px">'+
@@ -1388,6 +1424,11 @@ function viewStaffTasks(id){
                 '<div style="font-size:9px;font-weight:600;color:var(--t3);margin-bottom:2px">REMARKS</div>'+esc(t.remarks)+
               '</div>':'')+
             '</div>'+
+            (AUTH_USER.isAdmin?'<button onclick="deleteTask('+t.id+',\''+esc(s.name)+'\')" style="padding:6px 8px;background:#ef4444;color:white;border:none;border-radius:5px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.2s;flex-shrink:0;height:28px" onmouseover="this.style.background=\'#dc2626\'" onmouseout="this.style.background=\'#ef4444\'" title="Delete Task">'+
+              '<svg style="width:14px;height:14px" fill="none" stroke="currentColor" viewBox="0 0 24 24">'+
+                '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>'+
+              '</svg>'+
+            '</button>':'')+
           '</div>'+
         '</div>';
       });
