@@ -1974,8 +1974,24 @@ function openUserManagementModal() {
   var dropdown = document.getElementById('userDropdown');
   if (dropdown) dropdown.classList.remove('show');
 
-  // Reset to add mode
-  resetUserForm();
+  // Update modal title and form visibility based on role
+  var form = document.getElementById('addUserForm');
+  var title = document.getElementById('userMgmtTitle');
+  var subtitle = document.getElementById('userMgmtSubtitle');
+
+  if (AUTH_USER.isAdmin) {
+    // Admin view - show form and management title
+    if (form) form.style.display = 'block';
+    if (title) title.textContent = 'User Management';
+    if (subtitle) subtitle.textContent = 'Add new user to the system';
+    // Reset to add mode
+    resetUserForm();
+  } else {
+    // Non-admin view - hide form, show profile title
+    if (form) form.style.display = 'none';
+    if (title) title.textContent = 'My Profile';
+    if (subtitle) subtitle.textContent = 'View and edit your profile information';
+  }
 
   // Show modal
   var modal = document.getElementById('userManagementModal');
@@ -2042,8 +2058,17 @@ function loadUsers() {
   })
   .then(function(result) {
     if (result.success && result.users) {
-      displayUsers(result.users);
-      // Also sync users to STAFF array for task management
+      var usersToDisplay = result.users;
+
+      // For non-admin users, show only their own record
+      if (!AUTH_USER.isAdmin) {
+        usersToDisplay = result.users.filter(function(user) {
+          return user.email === AUTH_USER.email;
+        });
+      }
+
+      displayUsers(usersToDisplay);
+      // Also sync ALL users to STAFF array for task management (admins need to see all for tasks)
       syncUsersToStaff(result.users);
     } else {
       usersList.innerHTML = '<div style="text-align:center;padding:20px;color:var(--t3);font-size:13px">Failed to load users</div>';
@@ -2119,9 +2144,16 @@ function displayUsers(users) {
 }
 
 function deleteUser(userId, userName) {
-  if (!confirm('Are you sure you want to delete user "' + userName + '"?')) {
-    return;
-  }
+  showConfirmDialog(
+    'Delete User',
+    'Are you sure you want to delete user "' + userName + '"? This action cannot be undone.',
+    function() {
+      performDeleteUser(userId, userName);
+    }
+  );
+}
+
+function performDeleteUser(userId, userName) {
 
   // Get CSRF token
   var csrfToken = document.querySelector('meta[name="csrf-token"]');

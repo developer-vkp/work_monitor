@@ -100,14 +100,14 @@
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
         </svg>
         <div>
-          <div style="font-size:18px;font-weight:600;color:#1f2937">User Management</div>
-          <div style="font-size:12px;color:#6b7280">Add new user to the system</div>
+          <div id="userMgmtTitle" style="font-size:18px;font-weight:600;color:#1f2937">User Management</div>
+          <div id="userMgmtSubtitle" style="font-size:12px;color:#6b7280">Add new user to the system</div>
         </div>
       </div>
       <button onclick="closeUserManagementModal()" style="position:absolute;top:50%;right:24px;transform:translateY(-50%);background:#f3f4f6;border:none;width:32px;height:32px;border-radius:6px;color:#6b7280;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:20px;line-height:1;transition:all 0.2s" onmouseover="this.style.background='#e5e7eb';this.style.color='#374151'" onmouseout="this.style.background='#f3f4f6';this.style.color='#6b7280'">&times;</button>
     </div>
     <div class="md-body" style="background:#ffffff;padding:24px;max-height:70vh;overflow-y:auto">
-      <form id="addUserForm" onsubmit="handleSaveUser(event)">
+      <form id="addUserForm" onsubmit="handleSaveUser(event)" style="display:none">
         <input type="hidden" id="editUserId" name="userId">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
           <div>
