@@ -512,6 +512,25 @@
                 eyeSlashIcon.style.display = 'none';
             }
         }
+
+        // Auto-dismiss success/logout messages after 4 seconds
+        document.addEventListener('DOMContentLoaded', function() {
+            const successAlert = document.querySelector('.alert-success');
+
+            if (successAlert) {
+                // Fade out after 4 seconds
+                setTimeout(function() {
+                    successAlert.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+                    successAlert.style.opacity = '0';
+                    successAlert.style.transform = 'translateY(-10px)';
+
+                    // Remove from DOM after fade completes
+                    setTimeout(function() {
+                        successAlert.remove();
+                    }, 500);
+                }, 4000);
+            }
+        });
     </script>
 </body>
 </html>

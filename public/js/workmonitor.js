@@ -19,11 +19,11 @@ var STAFF=[];
 var TID=100;var TASKS=[];var FEED=[];
 var _today=todayStr();
 function addFeed(msg,col){FEED.unshift({id:++TID,msg:msg,col:col||'blue',time:new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})});if(FEED.length>50)FEED.pop();}
-(function(){addFeed('WorkMonitor Pro ready — import staff to begin','blue');})();
+(function(){addFeed('WorkMonitor Pro ready','blue');})();
 
 // ── STATE ─────────────────────────────────────────────────────────
-var S={role:'Director',staffId:'ST001',selStaff:null,selDate:_today,
-  view:'overview',  // overview | board | timeline | analytics
+var S={role:AUTH_USER.role||'user',staffId:AUTH_USER.id||'',selStaff:null,selDate:_today,
+  view:AUTH_USER.isAdmin?'overview':'tasks',  // Default view based on role
   boardFilter:'all',boardSearch:'',boardCollapsed:{},boardDp:null,
   showAddForm:false,taskFromDate:_today,taskToDate:_today};
 var _newStaff={name:'',email:'',role:'',inst:''};
@@ -50,31 +50,41 @@ function allStats(){
 
 // ── LEFT PANE ────────────────────────────────────────────────────
 function rLp(){
-  if(S.role!=='Director'){el('lp').style.display='none';return;}
   el('lp').style.display='flex';el('lp').className='lpane';
   var active=activeStaff();
+
+  // Build navigation items based on role
+  var navItems = '';
+
+  // Dashboard - only for Administrator role
+  if(AUTH_USER.isAdmin){
+    navItems += '<div class="lp-nav-item '+(S.view==='overview'?'on':'')+'" data-view="overview">'+
+      '<svg class="lp-nav-ic" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>'+
+      '<span class="lp-nav-lbl">Dashboard</span>'+
+    '</div>';
+  }
+
+  // Tasks - for all users
+  navItems += '<div class="lp-nav-item '+(S.view==='tasks'?'on':'')+'" data-view="tasks">'+
+    '<svg class="lp-nav-ic" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>'+
+    '<span class="lp-nav-lbl">My Tasks</span>'+
+  '</div>';
+
   el('lp').innerHTML=
     '<div class="lp-top">'+
-      '<div class="lp-nav">'+
-        '<div class="lp-nav-item '+(S.view==='dashboard'?'on':'')+'" data-view="dashboard">'+
-          '<svg class="lp-nav-ic" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>'+
-          '<span class="lp-nav-lbl">Dashboard</span>'+
-        '</div>'+
-        '<div class="lp-nav-item '+(S.view==='tasks'?'on':'')+'" data-view="tasks">'+
-          '<svg class="lp-nav-ic" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>'+
-          '<span class="lp-nav-lbl">Task</span>'+
-        '</div>'+
-        '<div class="lp-nav-item '+(S.view==='staff'?'on':'')+'" data-view="staff">'+
-          '<svg class="lp-nav-ic" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>'+
-          '<span class="lp-nav-lbl">Staff Management</span>'+
-        '</div>'+
-      '</div>'+
+      '<div class="lp-nav">'+navItems+'</div>'+
     '</div>';
+
   // Bind
   el('lp').addEventListener('click',function(e){
     var nav=e.target.closest('[data-view]');
     if(nav){
       var view=nav.dataset.view;
+      // Prevent non-admin from accessing overview
+      if(view==='overview' && !AUTH_USER.isAdmin){
+        toast('Access denied: Admin only','e');
+        return;
+      }
       S.view=view;
       S.selStaff=null;
       render();
@@ -85,7 +95,7 @@ function rLp(){
 
 // ── TOPBAR ───────────────────────────────────────────────────────
 function rTb(){
-  var isDir=S.role==='Director';
+  var isDir=AUTH_USER.isAdmin;
   var pend=TASKS.filter(function(t){return !t.action&&t.status==='Done';}).length;
   var viewTitles={overview:'Overview',board:'Task Board',timeline:'Timeline',analytics:'Analytics'};
   el('tb').innerHTML=
@@ -150,7 +160,7 @@ function rTb(){
 // ── TAB BAR ──────────────────────────────────────────────────────
 function rTabBar(){
   var tbar=el('tbar');
-  if(S.role!=='Director'||S.view==='staff'||S.view==='tasks'){tbar.style.display='none';return;}
+  if(!AUTH_USER.isAdmin||S.view==='tasks'){tbar.style.display='none';return;}
   tbar.style.display='flex';
   var tabs=[{v:'overview',lbl:'&#9617; Overview'},{v:'board',lbl:'&#9776; Board'},{v:'timeline',lbl:'&#9641; Timeline'},{v:'analytics',lbl:'&#9656; Analytics'}];
   tbar.innerHTML=tabs.map(function(t){return '<div class="tab'+(S.view===t.v?' on':'')+'" data-tab="'+t.v+'">'+t.lbl+'</div>';}).join('');
@@ -158,198 +168,7 @@ function rTabBar(){
 }
 
 // ── STAFF MANAGEMENT PAGE ─────────────────────────────────────────
-function rStaffManagementPage(){
-  var active=activeStaff();
-  var addFormHTML='';
-  if(S.showAddForm){
-    addFormHTML='<div class="staff-add-section">'+
-      '<div class="sec-title" style="margin-bottom:14px">Add New Staff Member</div>'+
-      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'+
-        '<div><div class="ml">Full Name</div><input type="text" id="staff-name" class="mi" placeholder="Enter full name"></div>'+
-        '<div><div class="ml">Email (Optional)</div><input type="email" id="staff-email" class="mi" placeholder="email@example.com"></div>'+
-        '<div>'+
-          '<div class="ml">Role / Designation</div>'+
-          '<select id="staff-role" class="msel">'+
-            '<option value="">Select Role</option>'+
-            '<option value="Developer">Developer</option>'+
-            '<option value="Designer">Designer</option>'+
-            '<option value="Manager">Manager</option>'+
-            '<option value="Analyst">Analyst</option>'+
-            '<option value="Consultant">Consultant</option>'+
-            '<option value="Engineer">Engineer</option>'+
-            '<option value="Architect">Architect</option>'+
-            '<option value="Administrator">Administrator</option>'+
-            '<option value="Other">Other (type manually)</option>'+
-          '</select>'+
-          '<div id="staff-role-custom-w" style="display:none;margin-top:6px"><input type="text" id="staff-role-custom" class="mi" placeholder="Type your role"></div>'+
-        '</div>'+
-        '<div>'+
-          '<div class="ml">Department / Group</div>'+
-          '<select id="staff-dept" class="msel">'+
-            '<option value="">Select Department</option>'+
-            '<option value="Engineering">Engineering</option>'+
-            '<option value="Design">Design</option>'+
-            '<option value="Product">Product</option>'+
-            '<option value="Marketing">Marketing</option>'+
-            '<option value="Sales">Sales</option>'+
-            '<option value="Operations">Operations</option>'+
-            '<option value="Finance">Finance</option>'+
-            '<option value="HR">Human Resources</option>'+
-            '<option value="Other">Other</option>'+
-          '</select>'+
-          '<div id="staff-dept-custom-w" style="display:none;margin-top:6px"><input type="text" id="staff-dept-custom" class="mi" placeholder="Type your department"></div>'+
-        '</div>'+
-      '</div>'+
-      '<div style="display:flex;gap:8px;margin-top:12px">'+
-        '<button class="btn btn-pri" onclick="saveStaffFromPage()">Save Staff Member</button>'+
-        '<button class="btn btn-out" onclick="cancelAddStaff()">Cancel</button>'+
-      '</div>'+
-    '</div>';
-  }
-
-  var tableRows='';
-  if(active.length===0){
-    tableRows='<tr><td colspan="5" style="text-align:center;padding:40px;color:var(--t3)">No staff members yet. Click "Add Staff" to get started.</td></tr>';
-  } else {
-    tableRows=active.map(function(s,i){
-      var initials=s.name.substring(0,2).toUpperCase();
-      return '<tr>'+
-        '<td>'+
-          '<div style="display:flex;align-items:center;gap:10px">'+
-            '<div class="ava ava-md" style="background:var(--grad);color:#fff">'+initials+'</div>'+
-            '<div>'+
-              '<div style="font-size:13px;font-weight:600;color:var(--t1)">'+esc(s.name)+'</div>'+
-              '<div style="font-size:11px;color:var(--t3)">'+(s.email||'')+'</div>'+
-            '</div>'+
-          '</div>'+
-        '</td>'+
-        '<td><span class="role-badge">'+esc(s.role)+'</span></td>'+
-        '<td><span class="dept-badge">'+(s.department||s.inst||'-')+'</span></td>'+
-        '<td><span style="font-size:12px;color:var(--t2)">'+tasksFor(s.id,S.selDate).length+' / 5</span></td>'+
-        '<td>'+
-          '<div style="display:flex;gap:6px;justify-content:flex-end">'+
-            '<button class="btn btn-out btn-sm" data-act="edit" data-i="'+i+'">Edit</button>'+
-            '<button class="btn btn-red btn-sm" data-act="remove" data-i="'+i+'">Delete</button>'+
-          '</div>'+
-        '</td>'+
-      '</tr>';
-    }).join('');
-  }
-
-  el('ct').innerHTML=
-    '<div class="dash fi">'+
-      '<div class="sec-h">'+
-        '<div>'+
-          '<div class="sec-title">Staff Management</div>'+
-          '<div class="sec-sub">Manage all staff members and their details</div>'+
-        '</div>'+
-        '<button class="btn btn-pri" onclick="showAddStaffForm()">'+(S.showAddForm?'Cancel':'+ Add Staff')+'</button>'+
-      '</div>'+
-      addFormHTML+
-      '<div class="staff-table-container">'+
-        '<table class="staff-table">'+
-          '<thead>'+
-            '<tr>'+
-              '<th>Staff Member</th>'+
-              '<th>Role</th>'+
-              '<th>Department</th>'+
-              '<th>Tasks</th>'+
-              '<th style="text-align:right">Actions</th>'+
-            '</tr>'+
-          '</thead>'+
-          '<tbody>'+tableRows+'</tbody>'+
-        '</table>'+
-      '</div>'+
-    '</div>';
-
-  // Bind events
-  var btns=el('ct').querySelectorAll('[data-act]');
-  btns.forEach(function(btn){
-    btn.onclick=function(e){
-      e.stopPropagation();
-      var act=btn.dataset.act;
-      var idx=parseInt(btn.dataset.i);
-      var s=active[idx];
-      if(!s)return;
-      if(act==='edit')openEditStaff(s.id);
-      else if(act==='remove')confirmRemove(s.id);
-    };
-  });
-
-  // Bind dropdown change events
-  var roleSelect=el('staff-role');
-  if(roleSelect){
-    roleSelect.onchange=function(){
-      var customWrapper=el('staff-role-custom-w');
-      if(customWrapper){
-        customWrapper.style.display=this.value==='Other'?'block':'none';
-      }
-    };
-  }
-
-  var deptSelect=el('staff-dept');
-  if(deptSelect){
-    deptSelect.onchange=function(){
-      var customWrapper=el('staff-dept-custom-w');
-      if(customWrapper){
-        customWrapper.style.display=this.value==='Other'?'block':'none';
-      }
-    };
-  }
-}
-
-function showAddStaffForm(){
-  S.showAddForm=!S.showAddForm;
-  rStaffManagementPage();
-}
-
-function cancelAddStaff(){
-  S.showAddForm=false;
-  rStaffManagementPage();
-}
-
-function saveStaffFromPage(){
-  var name=(el('staff-name')||{}).value||'';
-  name=name.trim();
-  if(!name){toast('Name is required','e');return;}
-
-  var email=(el('staff-email')||{}).value||'';
-  email=email.trim();
-
-  // Get role - either from dropdown or custom input
-  var roleSelect=(el('staff-role')||{}).value||'';
-  var role=roleSelect;
-  if(roleSelect==='Other'){
-    role=(el('staff-role-custom')||{}).value||'';
-    role=role.trim();
-  }
-  if(!role){toast('Role is required','e');return;}
-
-  // Get department - either from dropdown or custom input
-  var deptSelect=(el('staff-dept')||{}).value||'';
-  var dept=deptSelect;
-  if(deptSelect==='Other'){
-    dept=(el('staff-dept-custom')||{}).value||'';
-    dept=dept.trim();
-  }
-  if(!dept){toast('Department is required','e');return;}
-
-  var newStaff={
-    id:'ST'+String(Date.now()).slice(-6),
-    name:name,
-    email:email,
-    role:role,
-    department:dept,
-    inst:dept,
-    active:true
-  };
-  STAFF.push(newStaff);
-  schedSave();
-  S.showAddForm=false;
-  toast('Staff member added successfully','s');
-  addFeed('New staff added: '+name,'green');
-  render();
-}
+// Staff Management page removed - use User Management instead
 
 // ── OVERVIEW ──────────────────────────────────────────────────────
 function rOverview(){
@@ -996,7 +815,7 @@ function setRole(r){S.role=r;S.selStaff=null;S.view='overview';render();toast('S
 // ── CONSOLIDATION BAR ────────────────────────────────────────────
 function rConsolBar(){
   var cbar=el('cbar');if(!cbar)return;
-  if(S.role!=='Director'||S.view==='staff'||S.view==='tasks'){cbar.style.display='none';return;}
+  if(!AUTH_USER.isAdmin||S.view==='tasks'){cbar.style.display='none';return;}
   cbar.style.display='flex';
   var active=activeStaff();
   var totalStaff=active.length;
@@ -1079,7 +898,22 @@ function rConsolBar(){
 
 // ── TASK MANAGEMENT PAGE ────────────────────────────────────────
 function rTaskManagementPage(){
+  // For non-admin users, show only their tasks
+  if(!AUTH_USER.isAdmin){
+    showMyTasks();
+    return;
+  }
+
+  // Admin view - show only staff who have tasks in the date range
   var active=activeStaff();
+
+  // Filter to show only users with tasks in the selected date range
+  var staffWithTasks=active.filter(function(s){
+    var tasksInRange=TASKS.filter(function(t){
+      return t.staffId===s.id&&t.date>=S.taskFromDate&&t.date<=S.taskToDate;
+    });
+    return tasksInRange.length>0;
+  });
 
   var html='<div class="dash">'+
     '<div class="sec-h">'+
@@ -1099,6 +933,12 @@ function rTaskManagementPage(){
           '</svg>'+
           '<input type="text" id="task-search" placeholder="Search staff..." style="width:200px">'+
         '</div>'+
+        '<button class="btn btn-pri" onclick="openAssignTask(null)" style="white-space:nowrap">'+
+          '<svg style="width:14px;height:14px;margin-right:4px" fill="none" stroke="currentColor" viewBox="0 0 24 24">'+
+            '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>'+
+          '</svg>'+
+          'Assign Task'+
+        '</button>'+
       '</div>'+
     '</div>'+
     '<div class="staff-table-container">'+
@@ -1112,10 +952,10 @@ function rTaskManagementPage(){
         '</tr></thead>'+
         '<tbody id="task-staff-tbody">';
 
-  if(active.length===0){
-    html+='<tr><td colspan="5" style="text-align:center;padding:40px;color:var(--t3)">No staff members. Add staff from Staff Management page.</td></tr>';
+  if(staffWithTasks.length===0){
+    html+='<tr><td colspan="5" style="text-align:center;padding:40px;color:var(--t3)">No tasks found in this date range. Use "Assign Task" to create new tasks.</td></tr>';
   }else{
-    active.forEach(function(s){
+    staffWithTasks.forEach(function(s){
       var dateRangeTasks=TASKS.filter(function(t){
         return t.staffId===s.id&&t.date>=S.taskFromDate&&t.date<=S.taskToDate;
       });
@@ -1192,6 +1032,296 @@ function rTaskManagementPage(){
       });
     };
   }
+}
+
+// Show tasks for the current logged-in user only
+function showMyTasks(){
+  // Initialize filter state if not exists
+  if(!S.myTaskFilters){
+    S.myTaskFilters={
+      fromDate:_today,
+      toDate:_today,
+      priority:'all',
+      status:'all'
+    };
+  }
+
+  var allMyTasks=TASKS.filter(function(t){
+    return t.staffId===AUTH_USER.id;
+  });
+
+  // Apply filters
+  var myTasks=allMyTasks.filter(function(t){
+    // Date filter
+    if(t.date<S.myTaskFilters.fromDate||t.date>S.myTaskFilters.toDate){
+      return false;
+    }
+    // Priority filter
+    if(S.myTaskFilters.priority!=='all'&&t.priority!==S.myTaskFilters.priority){
+      return false;
+    }
+    // Status filter
+    if(S.myTaskFilters.status!=='all'){
+      if(S.myTaskFilters.status==='Done'&&t.status!=='Done'){
+        return false;
+      }
+      if(S.myTaskFilters.status==='Pending'&&(t.action||t.status==='Done')){
+        return false;
+      }
+      if(S.myTaskFilters.status==='Approved'&&t.action!=='Approved'){
+        return false;
+      }
+      if(S.myTaskFilters.status==='Rejected'&&t.action!=='Rejected'){
+        return false;
+      }
+    }
+    return true;
+  });
+
+  // Sort by date descending (newest first)
+  myTasks.sort(function(a,b){
+    return new Date(b.date)-new Date(a.date);
+  });
+
+  // Group tasks by date
+  var tasksByDate={};
+  myTasks.forEach(function(task){
+    if(!tasksByDate[task.date]){
+      tasksByDate[task.date]=[];
+    }
+    tasksByDate[task.date].push(task);
+  });
+
+  // Initialize collapsed state if not exists
+  if(!S.myTasksCollapsed){
+    S.myTasksCollapsed={};
+  }
+
+  var html='<div class="dash">'+
+    '<div class="sec-h">'+
+      '<div>'+
+        '<div class="sec-title">My Tasks</div>'+
+        '<div class="sec-sub">Tasks assigned to you</div>'+
+      '</div>'+
+      '<div style="display:flex;align-items:center;gap:12px;margin-left:auto">'+
+        '<div style="display:flex;align-items:center;gap:8px">'+
+          '<label style="font-size:12px;font-weight:600;color:var(--t2);white-space:nowrap">From:</label>'+
+          '<input type="date" class="date-inp" id="my-task-from" value="'+S.myTaskFilters.fromDate+'" style="width:140px">'+
+        '</div>'+
+        '<div style="display:flex;align-items:center;gap:8px">'+
+          '<label style="font-size:12px;font-weight:600;color:var(--t2);white-space:nowrap">To:</label>'+
+          '<input type="date" class="date-inp" id="my-task-to" value="'+S.myTaskFilters.toDate+'" style="width:140px">'+
+        '</div>'+
+        '<select id="my-task-priority" class="msel" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:6px;font-size:13px">'+
+          '<option value="all"'+(S.myTaskFilters.priority==='all'?' selected':'')+'>All Priority</option>'+
+          '<option value="High"'+(S.myTaskFilters.priority==='High'?' selected':'')+'>High</option>'+
+          '<option value="Medium"'+(S.myTaskFilters.priority==='Medium'?' selected':'')+'>Medium</option>'+
+          '<option value="Low"'+(S.myTaskFilters.priority==='Low'?' selected':'')+'>Low</option>'+
+        '</select>'+
+        '<select id="my-task-status" class="msel" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:6px;font-size:13px">'+
+          '<option value="all"'+(S.myTaskFilters.status==='all'?' selected':'')+'>All Status</option>'+
+          '<option value="Pending"'+(S.myTaskFilters.status==='Pending'?' selected':'')+'>Pending</option>'+
+          '<option value="Done"'+(S.myTaskFilters.status==='Done'?' selected':'')+'>Done</option>'+
+          '<option value="Approved"'+(S.myTaskFilters.status==='Approved'?' selected':'')+'>Approved</option>'+
+          '<option value="Rejected"'+(S.myTaskFilters.status==='Rejected'?' selected':'')+'>Rejected</option>'+
+        '</select>'+
+      '</div>'+
+    '</div>';
+
+  if(myTasks.length===0){
+    html+='<div style="text-align:center;padding:60px 20px;color:var(--t3)">'+
+      '<svg style="width:48px;height:48px;margin:0 auto 16px;opacity:0.3" fill="none" stroke="currentColor" viewBox="0 0 24 24">'+
+        '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>'+
+      '</svg>'+
+      '<div style="font-size:16px;font-weight:600;color:var(--t2);margin-bottom:8px">No tasks found</div>'+
+      '<div style="font-size:13px;color:var(--t3)">Try adjusting your filters</div>'+
+    '</div>';
+  }else{
+    html+='<div style="display:grid;gap:16px;padding:20px">';
+
+    // Iterate through dates
+    Object.keys(tasksByDate).sort(function(a,b){
+      return new Date(b)-new Date(a);
+    }).forEach(function(date){
+      var tasksForDate=tasksByDate[date];
+      var isCollapsed=S.myTasksCollapsed[date]!==false; // Default to collapsed
+      var taskCount=tasksForDate.length;
+
+      // Date header
+      html+='<div style="background:var(--white);border:1.5px solid var(--border);border-radius:10px;overflow:hidden">'+
+        '<div onclick="toggleMyTaskDate(\''+date+'\')" style="display:flex;align-items:center;gap:12px;padding:14px 16px;background:#f9fafb;cursor:pointer;user-select:none">'+
+          '<svg style="width:20px;height:20px;color:#3b82f6;flex-shrink:0" fill="none" stroke="currentColor" viewBox="0 0 24 24">'+
+            '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>'+
+          '</svg>'+
+          '<div style="flex:1">'+
+            '<div style="font-size:15px;font-weight:600;color:var(--t1)">'+fmtDate(date)+'</div>'+
+            '<div style="font-size:12px;color:var(--t3)">'+taskCount+' task'+(taskCount>1?'s':'')+'</div>'+
+          '</div>'+
+          '<svg style="width:20px;height:20px;color:var(--t3);transform:rotate('+(isCollapsed?'-90':'0')+'deg);transition:transform 0.2s" fill="none" stroke="currentColor" viewBox="0 0 24 24">'+
+            '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>'+
+          '</svg>'+
+        '</div>';
+
+      // Tasks for this date
+      if(!isCollapsed){
+        html+='<div style="padding:12px">';
+        tasksForDate.forEach(function(task,idx){
+          var statusColor=task.status==='Done'?'var(--green)':!task.action?'var(--amber)':task.action==='Approved'?'var(--green)':'var(--red)';
+          var statusText=task.status==='Done'?'Done':!task.action?'Pending':task.action==='Approved'?'Approved':'Rejected';
+          var statusBg=task.status==='Done'?'var(--glight)':!task.action?'var(--alight)':task.action==='Approved'?'var(--glight)':'var(--rlight)';
+
+          var priorityColor=task.priority==='High'?'#dc2626':task.priority==='Low'?'#0369a1':'#b45309';
+          var priorityBg=task.priority==='High'?'#fee2e2':task.priority==='Low'?'#dbeafe':'#fef3c7';
+
+          html+='<div style="background:#fafafa;border:1px solid #e5e7eb;border-radius:8px;padding:14px;'+(idx>0?'margin-top:10px':'')+'">'+
+            '<div style="display:flex;align-items:start;gap:12px;margin-bottom:10px">'+
+              '<div style="flex:1">'+
+                '<div style="font-size:14px;font-weight:600;color:var(--t1);margin-bottom:6px">'+esc(task.desc||'No description')+'</div>'+
+                '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'+
+                  (task.priority?'<span style="padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;background:'+priorityBg+';color:'+priorityColor+'">'+esc(task.priority)+'</span>':'')+
+                '</div>'+
+              '</div>'+
+              '<div style="display:flex;gap:8px;align-items:center">'+
+                '<div style="padding:5px 10px;border-radius:6px;font-size:11px;font-weight:600;background:'+statusBg+';color:'+statusColor+'">'+
+                  statusText+
+                '</div>';
+
+          // Show Mark as Done button only if task is not done and not rejected
+          if(task.status!=='Done'&&task.action!=='Rejected'){
+            html+='<button onclick="markTaskDone('+task.id+')" style="padding:5px 10px;background:#10b981;color:white;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap">✓ Done</button>';
+          }
+
+          html+='  </div>'+
+            '</div>';
+
+          if(task.adminRem){
+            html+='<div style="background:#fff;border-radius:6px;padding:8px;margin-bottom:6px">'+
+              '<div style="font-size:10px;font-weight:600;color:var(--t3);margin-bottom:3px">Admin Note:</div>'+
+              '<div style="font-size:12px;color:var(--t2)">'+esc(task.adminRem)+'</div>'+
+            '</div>';
+          }
+
+          if(task.staffRem){
+            html+='<div style="background:#fff;border-radius:6px;padding:8px">'+
+              '<div style="font-size:10px;font-weight:600;color:var(--t3);margin-bottom:3px">My Note:</div>'+
+              '<div style="font-size:12px;color:var(--t2)">'+esc(task.staffRem)+'</div>'+
+            '</div>';
+          }
+
+          html+='</div>';
+        });
+        html+='</div>';
+      }
+
+      html+='</div>';
+    });
+    html+='</div>';
+  }
+
+  html+='</div>';
+  el('ct').innerHTML=html;
+
+  // Bind filter change events
+  var fromDate=el('my-task-from');
+  var toDate=el('my-task-to');
+  var priority=el('my-task-priority');
+  var status=el('my-task-status');
+
+  if(fromDate){
+    fromDate.onchange=function(){
+      S.myTaskFilters.fromDate=this.value;
+      if(S.myTaskFilters.fromDate>S.myTaskFilters.toDate){
+        S.myTaskFilters.toDate=S.myTaskFilters.fromDate;
+      }
+      showMyTasks();
+    };
+  }
+
+  if(toDate){
+    toDate.onchange=function(){
+      S.myTaskFilters.toDate=this.value;
+      if(S.myTaskFilters.toDate<S.myTaskFilters.fromDate){
+        S.myTaskFilters.fromDate=S.myTaskFilters.toDate;
+      }
+      showMyTasks();
+    };
+  }
+
+  if(priority){
+    priority.onchange=function(){
+      S.myTaskFilters.priority=this.value;
+      showMyTasks();
+    };
+  }
+
+  if(status){
+    status.onchange=function(){
+      S.myTaskFilters.status=this.value;
+      showMyTasks();
+    };
+  }
+}
+
+// Mark task as done
+function markTaskDone(taskId){
+  var task=TASKS.find(function(t){return t.id===taskId;});
+  if(!task)return;
+
+  // Show custom confirmation modal
+  showConfirmDialog(
+    'Mark Task as Done?',
+    'Are you sure you want to mark "'+esc(task.desc)+'" as completed?',
+    function(){
+      // On confirm
+      task.status='Done';
+      toast('Task marked as done!','s');
+      addFeed('Task completed: '+task.desc,'green');
+      schedSave();
+      showMyTasks(); // Refresh the view
+    }
+  );
+}
+
+// Custom confirmation dialog
+function showConfirmDialog(title,message,onConfirm){
+  var html='<div class="modal" onclick="event.stopPropagation()" style="max-width:450px">'+
+    '<div class="m-head">'+
+      '<div style="flex:1">'+
+        '<div style="font-size:18px;font-weight:700;color:var(--t1)">'+esc(title)+'</div>'+
+      '</div>'+
+    '</div>'+
+    '<div class="m-body">'+
+      '<div style="font-size:14px;color:var(--t2);line-height:1.6">'+esc(message)+'</div>'+
+    '</div>'+
+    '<div class="m-foot" style="display:flex;gap:10px">'+
+      '<button class="btn btn-out" id="confirm-cancel" style="flex:1">Cancel</button>'+
+      '<button class="btn btn-pri" id="confirm-ok" style="flex:1;background:#10b981">'+
+        '<svg style="width:16px;height:16px;margin-right:4px" fill="none" stroke="currentColor" viewBox="0 0 24 24">'+
+          '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>'+
+        '</svg>'+
+        'Confirm'+
+      '</button>'+
+    '</div>'+
+  '</div>';
+
+  showOv(html);
+
+  el('confirm-cancel').onclick=closeOv;
+  el('confirm-ok').onclick=function(){
+    closeOv();
+    if(onConfirm)onConfirm();
+  };
+}
+
+// Toggle date group collapse/expand
+function toggleMyTaskDate(date){
+  if(!S.myTasksCollapsed){
+    S.myTasksCollapsed={};
+  }
+  // Toggle: if undefined/true (collapsed), set to false (expanded)
+  // if false (expanded), set to true (collapsed)
+  S.myTasksCollapsed[date]=S.myTasksCollapsed[date]===false?true:false;
+  showMyTasks(); // Refresh the view
 }
 
 function viewStaffTasks(id){
@@ -1302,6 +1432,90 @@ function viewStaffTasks(id){
 }
 
 function openAssignTask(id){
+  var active=activeStaff();
+
+  // If no ID provided, show user selection dropdown
+  if(!id || id===null || id==='null'){
+    var dateFormatted=new Date(S.selDate).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
+
+    // Build user dropdown options
+    var userOptions='<option value="">Select User</option>';
+    active.forEach(function(user){
+      userOptions+='<option value="'+user.id+'">'+esc(user.name)+' ('+esc(user.role||'—')+')</option>';
+    });
+
+    showOv('<div class="modal" onclick="event.stopPropagation()" style="max-width:500px">'+
+      '<div class="m-head">'+
+        '<div style="flex:1">'+
+          '<div style="font-size:16px;font-weight:700;color:var(--t1)">Assign New Task</div>'+
+          '<div style="font-size:12px;color:var(--t3)">Select user and assign task</div>'+
+        '</div>'+
+        '<button class="btn btn-out btn-sm" id="m-x">&#10005;</button>'+
+      '</div>'+
+      '<div class="m-body">'+
+        '<div class="ml" style="margin-bottom:6px">Assign To</div>'+
+        '<select class="msel" id="at-user" style="margin-bottom:12px">'+userOptions+'</select>'+
+        '<div class="ml" style="margin-bottom:8px">Task Description</div>'+
+        '<textarea class="mi" id="at-desc" placeholder="Enter task description..." style="resize:none;min-height:70px;margin-bottom:10px;line-height:1.5"></textarea>'+
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'+
+          '<div><div class="ml">Date</div><input type="date" class="mi last" id="at-date" value="'+_today+'"></div>'+
+          '<div><div class="ml">Priority</div><select class="msel last" id="at-pri">'+
+            '<option value="High">High</option>'+
+            '<option value="Medium" selected>Medium</option>'+
+            '<option value="Low">Low</option>'+
+          '</select></div>'+
+        '</div>'+
+      '</div>'+
+      '<div class="m-foot">'+
+        '<button class="btn btn-out btn-sm" id="at-cl">Close</button>'+
+        '<button class="btn btn-pri btn-sm" id="at-sv">'+
+          '<svg style="width:14px;height:14px;margin-right:3px" fill="none" stroke="currentColor" viewBox="0 0 24 24">'+
+            '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>'+
+          '</svg>'+
+          'Assign Task'+
+        '</button>'+
+      '</div>'+
+    '</div>');
+
+    el('m-x').onclick=closeOv;
+    el('at-cl').onclick=closeOv;
+    el('at-sv').onclick=function(){
+      var userId=(el('at-user')||{}).value||'';
+      if(!userId){toast('Please select a user','w');return;}
+
+      var desc=(el('at-desc')||{}).value||'';
+      if(!desc.trim()){toast('Task description is required','w');return;}
+
+      var date=(el('at-date')||{}).value||S.selDate;
+      var pri=(el('at-pri')||{}).value||'Medium';
+
+      var selectedUser=active.find(function(u){return u.id===userId;});
+      if(!selectedUser){toast('User not found','e');return;}
+
+      var ct=tasksFor(userId,date).length;
+      TASKS.push({
+        id:++TID,
+        staffId:userId,
+        date:date,
+        n:ct+1,
+        desc:desc.trim(),
+        status:'Pending',
+        action:'',
+        remarks:'',
+        staffRem:'',
+        adminRem:'',
+        priority:pri
+      });
+      toast('Task assigned to '+esc(selectedUser.name),'s');
+      addFeed('Task assigned to '+selectedUser.name+' for '+date,'blue');
+      schedSave();
+      closeOv();
+      render();
+    };
+    return;
+  }
+
+  // Original code for when specific user ID is provided
   var s=STAFF.find(function(x){return x.id===id;});if(!s)return;
   var existing=tasksFor(s.id,S.selDate);
   var dateFormatted=new Date(S.selDate).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
@@ -1347,7 +1561,7 @@ function openAssignTask(id){
         '<div class="ml" style="margin-bottom:8px">New Task</div>'+
         '<textarea class="mi" id="at-desc" placeholder="Enter task description..." style="resize:none;min-height:70px;margin-bottom:10px;line-height:1.5"></textarea>'+
         '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'+
-          '<div><div class="ml">Date</div><input type="date" class="mi last" id="at-date" value="'+S.selDate+'"></div>'+
+          '<div><div class="ml">Date</div><input type="date" class="mi last" id="at-date" value="'+_today+'"></div>'+
           '<div><div class="ml">Priority</div><select class="msel last" id="at-pri">'+
             '<option value="High">High</option>'+
             '<option value="Medium" selected>Medium</option>'+
@@ -1398,17 +1612,15 @@ function openAssignTask(id){
 
 // ── RENDER ───────────────────────────────────────────────────────
 function renderContent(){
-  if(S.role==='Director'){
-    if(S.view==='staff')rStaffManagementPage();
-    else if(S.view==='tasks')rTaskManagementPage();
+  if(AUTH_USER.isAdmin){
+    if(S.view==='tasks')rTaskManagementPage();
     else if(S.view==='board')rBoard();
     else if(S.view==='timeline')rTimeline();
     else if(S.view==='analytics')rAnalytics();
     else rOverview();
   } else {
-    if(S.view==='staff')rStaffManagementPage();
-    else if(S.view==='tasks')rTaskManagementPage();
-    else rStaffView();
+    // Non-admin users only see their tasks
+    rTaskManagementPage();
   }
 }
 function render(){rLp();rTb();rTabBar();rConsolBar();renderContent();}
@@ -1423,15 +1635,6 @@ function autoSave(){
 
   var ind=el('save-ind');
   if(ind)ind.style.opacity='1';
-
-  // Save staff data to GitHub
-  fetch('/api/staff/save',{
-    method:'POST',
-    headers:{'Content-Type':'application/json','X-CSRF-TOKEN':document.querySelector('meta[name="csrf-token"]')?.content||''},
-    body:JSON.stringify({staff:STAFF})
-  }).then(function(r){return r.json();}).then(function(data){
-    if(!data.success){console.error('Staff save failed:',data.message);}
-  }).catch(function(e){console.error('Staff save error:',e);});
 
   // Save tasks data to GitHub
   fetch('/api/tasks/save',{
@@ -1460,18 +1663,32 @@ function schedSave(){clearTimeout(_saveTimer);_saveTimer=setTimeout(autoSave,800
 function restoreData(){
   var restored=false;
 
-  // Load staff data from GitHub
-  fetch('/api/staff',{
+  // Load users from User Management API
+  fetch('/admin/users',{
     method:'GET',
-    headers:{'Content-Type':'application/json'}
+    headers:{
+      'Content-Type':'application/json',
+      'X-CSRF-TOKEN':document.querySelector('meta[name="csrf-token"]')?.content||''
+    }
   }).then(function(r){return r.json();}).then(function(response){
-    if(response.success&&response.data&&response.data.length){
+    if(response.success&&response.users&&response.users.length){
       STAFF.length=0;
-      response.data.forEach(function(s){STAFF.push(s);});
+      response.users.forEach(function(user){
+        // Convert user format to staff format
+        STAFF.push({
+          id:user.id,
+          name:user.name,
+          email:user.email,
+          role:user.role,
+          department:user.department,
+          inst:user.department,
+          active:true
+        });
+      });
       restored=true;
       render();
     }
-  }).catch(function(e){console.error('Staff load error:',e);});
+  }).catch(function(e){console.error('User load error:',e);});
 
   // Load tasks data from GitHub
   fetch('/api/tasks',{
@@ -1757,10 +1974,15 @@ function openUserManagementModal() {
   var dropdown = document.getElementById('userDropdown');
   if (dropdown) dropdown.classList.remove('show');
 
+  // Reset to add mode
+  resetUserForm();
+
   // Show modal
   var modal = document.getElementById('userManagementModal');
   if (modal) {
     modal.style.display = 'flex';
+    // Load users when modal opens
+    loadUsers();
   }
 }
 
@@ -1769,32 +1991,256 @@ function closeUserManagementModal() {
   if (modal) {
     modal.style.display = 'none';
     // Reset form
-    var form = document.getElementById('addUserForm');
-    if (form) form.reset();
+    resetUserForm();
   }
 }
 
-function handleAddUser(e) {
+function resetUserForm() {
+  var form = document.getElementById('addUserForm');
+  if (form) form.reset();
+
+  // Reset to add mode
+  document.getElementById('editUserId').value = '';
+  document.getElementById('submitUserBtnText').textContent = 'Add User';
+  document.getElementById('userPassword').required = true;
+  document.getElementById('passwordOptional').style.display = 'none';
+
+  // Hide custom role input
+  var roleCustomWrapper = document.getElementById('userRoleCustomWrapper');
+  if (roleCustomWrapper) roleCustomWrapper.style.display = 'none';
+}
+
+function toggleRoleCustomInput() {
+  var roleSelect = document.getElementById('userRole');
+  var roleCustomWrapper = document.getElementById('userRoleCustomWrapper');
+
+  if (roleSelect && roleCustomWrapper) {
+    roleCustomWrapper.style.display = roleSelect.value === 'Other' ? 'block' : 'none';
+  }
+}
+
+function loadUsers() {
+  var usersList = document.getElementById('usersList');
+  if (!usersList) return;
+
+  // Show loading state
+  usersList.innerHTML = '<div style="text-align:center;padding:20px;color:var(--t3);font-size:13px">Loading users...</div>';
+
+  // Get CSRF token
+  var csrfToken = document.querySelector('meta[name="csrf-token"]');
+  var token = csrfToken ? csrfToken.getAttribute('content') : '';
+
+  fetch('/admin/users', {
+    method: 'GET',
+    headers: {
+      'Accept': 'application/json',
+      'X-CSRF-TOKEN': token
+    }
+  })
+  .then(function(response) {
+    return response.json();
+  })
+  .then(function(result) {
+    if (result.success && result.users) {
+      displayUsers(result.users);
+      // Also sync users to STAFF array for task management
+      syncUsersToStaff(result.users);
+    } else {
+      usersList.innerHTML = '<div style="text-align:center;padding:20px;color:var(--t3);font-size:13px">Failed to load users</div>';
+    }
+  })
+  .catch(function(error) {
+    console.error('Error loading users:', error);
+    usersList.innerHTML = '<div style="text-align:center;padding:20px;color:var(--t3);font-size:13px">Error loading users</div>';
+  });
+}
+
+// Sync users from User Management to STAFF array for task management
+function syncUsersToStaff(users) {
+  STAFF.length = 0;
+  users.forEach(function(user) {
+    STAFF.push({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      department: user.department,
+      inst: user.department,
+      active: true
+    });
+  });
+}
+
+function displayUsers(users) {
+  var usersList = document.getElementById('usersList');
+  if (!usersList) return;
+
+  if (users.length === 0) {
+    usersList.innerHTML = '<div style="text-align:center;padding:20px;color:#6b7280;font-size:13px">No users found</div>';
+    return;
+  }
+
+  var html = '';
+  users.forEach(function(user) {
+    var initials = user.name ? user.name.substring(0, 2).toUpperCase() : user.email.substring(0, 2).toUpperCase();
+    var roleDisplay = user.role.charAt(0).toUpperCase() + user.role.slice(1);
+    var departmentDisplay = user.department || 'N/A';
+    var isCurrentUser = AUTH_USER.email === user.email;
+
+    html += '<div style="display:flex;align-items:center;gap:12px;padding:14px;background:#f9fafb;border-radius:8px;border:1px solid #e5e7eb">';
+    html += '  <div style="width:44px;height:44px;background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;border-radius:50%;flex-shrink:0">' + initials + '</div>';
+    html += '  <div style="flex:1;min-width:0">';
+    html += '    <div style="font-size:14px;font-weight:600;color:#1f2937">' + user.name + '</div>';
+    html += '    <div style="font-size:12px;color:#6b7280">' + user.email + ' • ' + roleDisplay + ' • ' + departmentDisplay + '</div>';
+    html += '  </div>';
+
+    html += '  <div style="display:flex;gap:8px;flex-shrink:0">';
+
+    // Always show Edit button for everyone
+    html += '    <button onclick="editUser(\'' + user.id + '\')" style="padding:8px 14px;background:#3b82f6;color:white;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;transition:background 0.2s" onmouseover="this.style.background=\'#2563eb\'" onmouseout="this.style.background=\'#3b82f6\'">Edit</button>';
+
+    // Show Delete button only for Admin users (not for non-admins)
+    if (AUTH_USER.isAdmin) {
+      // Admin users can delete others, but not themselves
+      if (!isCurrentUser) {
+        html += '    <button onclick="deleteUser(\'' + user.id + '\', \'' + user.name + '\')" style="padding:8px 14px;background:#ef4444;color:white;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;transition:background 0.2s" onmouseover="this.style.background=\'#dc2626\'" onmouseout="this.style.background=\'#ef4444\'">Delete</button>';
+      } else {
+        // Show "Current User" badge for admin viewing themselves
+        html += '    <div style="padding:8px 14px;background:#e5e7eb;color:#6b7280;border-radius:6px;font-size:12px;font-weight:600">Current User</div>';
+      }
+    }
+
+    html += '  </div>';
+
+    html += '</div>';
+  });
+
+  usersList.innerHTML = html;
+}
+
+function deleteUser(userId, userName) {
+  if (!confirm('Are you sure you want to delete user "' + userName + '"?')) {
+    return;
+  }
+
+  // Get CSRF token
+  var csrfToken = document.querySelector('meta[name="csrf-token"]');
+  var token = csrfToken ? csrfToken.getAttribute('content') : '';
+
+  fetch('/admin/users/' + userId, {
+    method: 'DELETE',
+    headers: {
+      'Accept': 'application/json',
+      'X-CSRF-TOKEN': token
+    }
+  })
+  .then(function(response) {
+    return response.json();
+  })
+  .then(function(result) {
+    if (result.success) {
+      toast('User deleted successfully!', 's');
+      loadUsers(); // Reload the user list (this also syncs to STAFF)
+      // Also refresh the main view if needed
+      if (typeof renderContent === 'function' && S.view === 'tasks') {
+        setTimeout(renderContent, 300);
+      }
+    } else {
+      toast(result.message || 'Failed to delete user', 'e');
+    }
+  })
+  .catch(function(error) {
+    console.error('Error deleting user:', error);
+    toast('An error occurred. Please try again.', 'e');
+  });
+}
+
+function editUser(userId) {
+  // Get CSRF token
+  var csrfToken = document.querySelector('meta[name="csrf-token"]');
+  var token = csrfToken ? csrfToken.getAttribute('content') : '';
+
+  // Fetch user data
+  fetch('/admin/users', {
+    method: 'GET',
+    headers: {
+      'Accept': 'application/json',
+      'X-CSRF-TOKEN': token
+    }
+  })
+  .then(function(response) {
+    return response.json();
+  })
+  .then(function(result) {
+    if (result.success && result.users) {
+      var user = result.users.find(function(u) { return u.id === userId; });
+      if (user) {
+        // Populate form with user data
+        document.getElementById('editUserId').value = user.id;
+        document.getElementById('userName').value = user.name;
+        document.getElementById('userEmail').value = user.email;
+        document.getElementById('userDepartment').value = user.department || '';
+        document.getElementById('userPassword').value = '';
+        document.getElementById('userPassword').required = false;
+        document.getElementById('passwordOptional').style.display = 'inline';
+        document.getElementById('submitUserBtnText').textContent = 'Update User';
+
+        // Handle role - check if it's a predefined role or custom
+        var roleSelect = document.getElementById('userRole');
+        var predefinedRoles = ['Developer', 'Designer', 'Manager', 'Analyst', 'Tester', 'Engineer', 'Architect', 'Administrator'];
+
+        if (predefinedRoles.indexOf(user.role) !== -1) {
+          roleSelect.value = user.role;
+        } else {
+          // Custom role
+          roleSelect.value = 'Other';
+          document.getElementById('userRoleCustom').value = user.role;
+          document.getElementById('userRoleCustomWrapper').style.display = 'block';
+        }
+
+        // Scroll to top of form
+        document.querySelector('.md-body').scrollTop = 0;
+      }
+    }
+  })
+  .catch(function(error) {
+    console.error('Error fetching user:', error);
+    toast('Failed to load user data', 'e');
+  });
+}
+
+function handleSaveUser(e) {
   e.preventDefault();
 
   var form = e.target;
   var formData = new FormData(form);
-  var password = formData.get('password');
-  var confirmPassword = formData.get('password_confirmation');
+  var userId = document.getElementById('editUserId').value;
+  var isEdit = userId !== '';
 
-  // Validate passwords match
-  if (password !== confirmPassword) {
-    toast('Passwords do not match!', 'e');
-    return;
+  // Get role - either from dropdown or custom input
+  var roleSelect = document.getElementById('userRole').value;
+  var role = roleSelect;
+  if (roleSelect === 'Other') {
+    role = document.getElementById('userRoleCustom').value.trim();
+    if (!role) {
+      toast('Please enter a custom role', 'e');
+      return;
+    }
   }
 
   // Prepare data
   var data = {
     name: formData.get('name'),
     email: formData.get('email'),
-    role: formData.get('role'),
-    password: password
+    role: role,
+    department: formData.get('department')
   };
+
+  // Add password only if provided
+  var password = formData.get('password');
+  if (password && password.trim() !== '') {
+    data.password = password;
+  }
 
   // Get CSRF token from meta tag or form
   var csrfToken = document.querySelector('meta[name="csrf-token"]');
@@ -1806,9 +2252,13 @@ function handleAddUser(e) {
     token = csrfInput ? csrfInput.value : '';
   }
 
+  // Determine URL and method
+  var url = isEdit ? '/admin/users/' + userId : '/admin/users/create';
+  var method = isEdit ? 'PUT' : 'POST';
+
   // Send to backend
-  fetch('/admin/users/create', {
-    method: 'POST',
+  fetch(url, {
+    method: method,
     headers: {
       'Content-Type': 'application/json',
       'X-CSRF-TOKEN': token,
@@ -1821,10 +2271,16 @@ function handleAddUser(e) {
   })
   .then(function(result) {
     if (result.success) {
-      toast('User added successfully!', 's');
-      closeUserManagementModal();
+      toast(isEdit ? 'User updated successfully!' : 'User added successfully!', 's');
+      resetUserForm();
+      form.reset();
+      loadUsers(); // Reload the user list (this also syncs to STAFF)
+      // Also refresh the main view if needed
+      if (typeof renderContent === 'function' && S.view === 'tasks') {
+        setTimeout(renderContent, 300);
+      }
     } else {
-      toast(result.message || 'Failed to add user', 'e');
+      toast(result.message || (isEdit ? 'Failed to update user' : 'Failed to add user'), 'e');
     }
   })
   .catch(function(error) {

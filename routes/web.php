@@ -3,7 +3,6 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AdminLoginController;
 use App\Http\Controllers\UserController;
-use App\Http\Controllers\StaffDataController;
 use App\Http\Controllers\TaskDataController;
 
 Route::get('/', function () {
@@ -22,26 +21,17 @@ Route::middleware('auth')->group(function () {
     })->name('admin.dashboard');
 
     // User Management
+    Route::get('/admin/users', [UserController::class, 'index'])->name('admin.users.index');
     Route::post('/admin/users/create', [UserController::class, 'store'])->name('admin.users.create');
+    Route::put('/admin/users/{id}', [UserController::class, 'update'])->name('admin.users.update');
+    Route::delete('/admin/users/{id}', [UserController::class, 'destroy'])->name('admin.users.destroy');
 
     // Profile Management
     Route::post('/admin/profile/change-password', [UserController::class, 'changePassword'])->name('admin.profile.change-password');
-
-    // GitHub Data Storage - Staff
-    Route::prefix('api/staff')->group(function () {
-        Route::get('/', [StaffDataController::class, 'index'])->name('api.staff.index');
-        Route::post('/save', [StaffDataController::class, 'store'])->name('api.staff.store');
-        Route::post('/add', [StaffDataController::class, 'addStaff'])->name('api.staff.add');
-        Route::put('/{id}', [StaffDataController::class, 'updateStaff'])->name('api.staff.update');
-        Route::delete('/{id}', [StaffDataController::class, 'deleteStaff'])->name('api.staff.delete');
-    });
 
     // GitHub Data Storage - Tasks
     Route::prefix('api/tasks')->group(function () {
         Route::get('/', [TaskDataController::class, 'index'])->name('api.tasks.index');
         Route::post('/save', [TaskDataController::class, 'store'])->name('api.tasks.store');
     });
-
-    // Test GitHub Connection
-    Route::get('/api/github/test', [StaffDataController::class, 'testConnection'])->name('api.github.test');
 });
