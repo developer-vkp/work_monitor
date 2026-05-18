@@ -4,11 +4,11 @@
             "id": "U1",
             "name": "Admin",
             "email": "admin@vkp.org",
-            "role": "admin",
+            "role": "Administrator",
             "password": "$2y$12$mtqThjuMC0X2\/\/PWWJnk4.VIHJFlc2ZvUKX2Y.IvozHG6v\/1M7b5a",
             "created_at": "2026-05-17 00:00:00",
             "department": "Engineering",
-            "updated_at": "2026-05-18 10:43:41"
+            "updated_at": "2026-05-18 10:46:41"
         },
         {
             "id": "U1779023039",
