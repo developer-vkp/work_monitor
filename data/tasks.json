@@ -67,7 +67,7 @@
             "n": 2,
             "desc": "VKP VCR",
             "status": "Pending",
-            "action": null,
+            "action": "Approved",
             "remarks": null,
             "staffRem": null,
             "priority": "Medium"
