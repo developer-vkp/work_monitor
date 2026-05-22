@@ -30,15 +30,6 @@
             "created_at": "2026-05-18 10:27:59"
         },
         {
-            "id": "U1779459694",
-            "name": "John Doe",
-            "email": "john.doe@example.com",
-            "role": "Developer",
-            "department": "Engineering",
-            "password": "$2y$12$fZaoY24wF8AdcE8OjGjckOVpGD5soShvXsTjjS5COnoOItv0Nnn.i",
-            "created_at": "2026-05-22 14:21:34"
-        },
-        {
             "id": "U1779459697",
             "name": "Sarah Williams",
             "email": "sarah.williams@example.com",
