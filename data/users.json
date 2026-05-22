@@ -28,6 +28,42 @@
             "department": "Engineering",
             "password": "$2y$12$v5VtuDruLsrFq5Njpo9U0.rEwCRhEDDRdnkbDITyiVr9wWaiWBtl.",
             "created_at": "2026-05-18 10:27:59"
+        },
+        {
+            "id": "U1779459694",
+            "name": "John Doe",
+            "email": "john.doe@example.com",
+            "role": "Developer",
+            "department": "Engineering",
+            "password": "$2y$12$fZaoY24wF8AdcE8OjGjckOVpGD5soShvXsTjjS5COnoOItv0Nnn.i",
+            "created_at": "2026-05-22 14:21:34"
+        },
+        {
+            "id": "U1779459695",
+            "name": "Jane Smith",
+            "email": "jane.smith@example.com",
+            "role": "Designer",
+            "department": "Design",
+            "password": "$2y$12$yZamhiySJuyEXIi3WJAfOOkL5eEVdctsNc7lfZbaq4BVSTJcKaFTa",
+            "created_at": "2026-05-22 14:21:34"
+        },
+        {
+            "id": "U1779459696",
+            "name": "Mike Johnson",
+            "email": "mike.johnson@example.com",
+            "role": "Manager",
+            "department": "Operations",
+            "password": "$2y$12$phmBhvDaMIASMtJzl8AGQ.6fZTUqYU5WYQq9HpTlDAfHdMsDpHSe2",
+            "created_at": "2026-05-22 14:21:34"
+        },
+        {
+            "id": "U1779459697",
+            "name": "Sarah Williams",
+            "email": "sarah.williams@example.com",
+            "role": "Analyst",
+            "department": "Finance",
+            "password": "$2y$12$ZutMd\/3M\/autJxwPCOhZCuP8c1sK6l3zj40FVFB4dS1q7iQjk1OyC",
+            "created_at": "2026-05-22 14:21:35"
         }
     ]
 }
