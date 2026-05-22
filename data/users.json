@@ -65,15 +65,6 @@
             "department": "Operations",
             "password": "$2y$12$L5Mxk0c8WPTgb\/IS\/St1KOv4BwKoP.i9Qhz6vy\/6zvV\/NSbzprk52",
             "created_at": "2026-05-22 17:04:35"
-        },
-        {
-            "id": "U1779469477",
-            "name": "Sarah Williams",
-            "email": "sarah.williams@example.com",
-            "role": "Analyst",
-            "department": "Finance",
-            "password": "$2y$12$QV4jlH7XyzcI62doduRjBe2R\/emZxy68C4gowGcW4x.4bg9nYOvxK",
-            "created_at": "2026-05-22 17:04:35"
         }
     ]
 }
