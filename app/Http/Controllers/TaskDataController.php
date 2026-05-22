@@ -21,12 +21,21 @@ class TaskDataController extends Controller
      */
     public function index()
     {
-        $data = $this->github->readFile($this->filename);
+        try {
+            $data = $this->github->readFile($this->filename);
 
-        return response()->json([
-            'success' => true,
-            'data' => $data['tasks'] ?? [],
-        ]);
+            return response()->json([
+                'success' => true,
+                'data' => $data['tasks'] ?? [],
+            ]);
+        } catch (\Exception $e) {
+            // Return empty array if file doesn't exist or error occurs
+            return response()->json([
+                'success' => true,
+                'data' => [],
+                'message' => 'No tasks found or file does not exist yet'
+            ]);
+        }
     }
 
     /**

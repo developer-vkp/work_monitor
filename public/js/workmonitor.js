@@ -25,7 +25,7 @@ function addFeed(msg,col){FEED.unshift({id:++TID,msg:msg,col:col||'blue',time:ne
 var S={role:AUTH_USER.role||'user',staffId:AUTH_USER.id||'',selStaff:null,selDate:_today,
   view:AUTH_USER.isAdmin?'overview':'tasks',  // Default view based on role
   boardFilter:'all',boardSearch:'',boardCollapsed:{},boardDp:null,
-  showAddForm:false,taskFromDate:_today,taskToDate:_today};
+  showAddForm:false,taskFromDate:relDate(-1),taskToDate:_today};
 var _newStaff={name:'',email:'',role:'',inst:''};
 var _editSD={};
 
@@ -176,8 +176,8 @@ function rOverview(){
   var st=allStats();var tot=st.total;
   var apP=tot?Math.round(st.ap/tot*100):0,rjP=tot?Math.round(st.rj/tot*100):0;
   var pnP=tot?Math.round(st.pn/tot*100):0,dnP=tot?Math.round(st.dn/tot*100):0;
-  var kpis=[{cl:'kg',lbl:'Approved',val:st.ap,pct:apP,fc:'#059669'},{cl:'kr',lbl:'Rejected',val:st.rj,pct:rjP,fc:'#DC2626'},{cl:'ka',lbl:'Pending Review',val:st.pn,pct:pnP,fc:'#B45309'},{cl:'kb',lbl:'Completion',val:dnP+'%',pct:dnP,fc:'#0369A1'}];
-  var kpiHTML=kpis.map(function(k){return '<div class="kpi '+k.cl+'"><div class="kpi-lbl">'+esc(k.lbl)+'</div><div class="kpi-val">'+k.val+'</div><div class="kpi-sub">'+k.pct+'% of total</div><div class="kpi-bar"><div class="kpi-fill" style="width:'+k.pct+'%;background:'+k.fc+'"></div></div></div>';}).join('');
+  var kpis=[{cl:'kg',lbl:'Approved',val:st.ap,pct:apP,fc:'#059669',filter:'approved'},{cl:'kr',lbl:'Rejected',val:st.rj,pct:rjP,fc:'#DC2626',filter:'rejected'},{cl:'ka',lbl:'Pending Review',val:st.pn,pct:pnP,fc:'#B45309',filter:'pending'},{cl:'kb',lbl:'Completion',val:dnP+'%',pct:dnP,fc:'#0369A1',filter:'all'}];
+  var kpiHTML=kpis.map(function(k){return '<div class="kpi '+k.cl+'" data-kpi-filter="'+k.filter+'" style="cursor:pointer"><div class="kpi-lbl">'+esc(k.lbl)+'</div><div class="kpi-val">'+k.val+'</div><div class="kpi-sub">'+k.pct+'% of total</div><div class="kpi-bar"><div class="kpi-fill" style="width:'+k.pct+'%;background:'+k.fc+'"></div></div></div>';}).join('');
   var active=activeStaff();
   var thumbsHTML=active.map(function(s,i){
     var st2=tasksFor(s.id,S.selDate);
@@ -204,6 +204,8 @@ function rOverview(){
     '<div class="card-sec"><div class="sec-h"><div class="sec-title">Activity</div><div class="live">Live</div></div>'+(FEED.length?feedHTML:'<div style="font-size:11px;color:var(--t4)">No activity yet.</div>')+'</div>'+
   '</div>';
   var tg=el('tg');if(tg)tg.addEventListener('click',function(e){var c=e.target.closest('.sthumb');if(!c)return;var s=activeStaff()[parseInt(c.dataset.i)];if(s){S.selStaff=s.id;rOverview();}});
+  // KPI card click handler
+  var kpiCards=document.querySelectorAll('[data-kpi-filter]');kpiCards.forEach(function(card){card.addEventListener('click',function(){var filter=this.dataset.kpiFilter;S.boardFilter=filter;S.view='board';S.selStaff=null;renderContent();rLp();rTabBar();});});
 }
 
 // ── BOARD VIEW ────────────────────────────────────────────────────
@@ -933,11 +935,11 @@ function rTaskManagementPage(){
           '</svg>'+
           '<input type="text" id="task-search" placeholder="Search staff..." style="width:200px">'+
         '</div>'+
-        '<button class="btn btn-pri" onclick="openAssignTask(null)" style="white-space:nowrap">'+
+        '<button class="btn btn-pri" onclick="openAssignTask(\''+AUTH_USER.id+'\')" style="white-space:nowrap">'+
           '<svg style="width:14px;height:14px;margin-right:4px" fill="none" stroke="currentColor" viewBox="0 0 24 24">'+
             '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>'+
           '</svg>'+
-          'Assign Task'+
+          'Add Task'+
         '</button>'+
       '</div>'+
     '</div>'+
@@ -1487,91 +1489,21 @@ function viewStaffTasks(id){
 }
 
 function openAssignTask(id){
-  var active=activeStaff();
-
-  // If no ID provided, show user selection dropdown
+  // Only allow task assignment when a specific user ID is provided
   if(!id || id===null || id==='null'){
-    var dateFormatted=new Date(S.selDate).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
-
-    // Build user dropdown options
-    var userOptions='<option value="">Select User</option>';
-    active.forEach(function(user){
-      userOptions+='<option value="'+user.id+'">'+esc(user.name)+' ('+esc(user.role||'—')+')</option>';
-    });
-
-    showOv('<div class="modal" onclick="event.stopPropagation()" style="max-width:500px">'+
-      '<div class="m-head">'+
-        '<div style="flex:1">'+
-          '<div style="font-size:16px;font-weight:700;color:var(--t1)">Assign New Task</div>'+
-          '<div style="font-size:12px;color:var(--t3)">Select user and assign task</div>'+
-        '</div>'+
-        '<button class="btn btn-out btn-sm" id="m-x">&#10005;</button>'+
-      '</div>'+
-      '<div class="m-body">'+
-        '<div class="ml" style="margin-bottom:6px">Assign To</div>'+
-        '<select class="msel" id="at-user" style="margin-bottom:12px">'+userOptions+'</select>'+
-        '<div class="ml" style="margin-bottom:8px">Task Description</div>'+
-        '<textarea class="mi" id="at-desc" placeholder="Enter task description..." style="resize:none;min-height:70px;margin-bottom:10px;line-height:1.5"></textarea>'+
-        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'+
-          '<div><div class="ml">Date</div><input type="date" class="mi last" id="at-date" value="'+_today+'"></div>'+
-          '<div><div class="ml">Priority</div><select class="msel last" id="at-pri">'+
-            '<option value="High">High</option>'+
-            '<option value="Medium" selected>Medium</option>'+
-            '<option value="Low">Low</option>'+
-          '</select></div>'+
-        '</div>'+
-      '</div>'+
-      '<div class="m-foot">'+
-        '<button class="btn btn-out btn-sm" id="at-cl">Close</button>'+
-        '<button class="btn btn-pri btn-sm" id="at-sv">'+
-          '<svg style="width:14px;height:14px;margin-right:3px" fill="none" stroke="currentColor" viewBox="0 0 24 24">'+
-            '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>'+
-          '</svg>'+
-          'Assign Task'+
-        '</button>'+
-      '</div>'+
-    '</div>');
-
-    el('m-x').onclick=closeOv;
-    el('at-cl').onclick=closeOv;
-    el('at-sv').onclick=function(){
-      var userId=(el('at-user')||{}).value||'';
-      if(!userId){toast('Please select a user','w');return;}
-
-      var desc=(el('at-desc')||{}).value||'';
-      if(!desc.trim()){toast('Task description is required','w');return;}
-
-      var date=(el('at-date')||{}).value||S.selDate;
-      var pri=(el('at-pri')||{}).value||'Medium';
-
-      var selectedUser=active.find(function(u){return u.id===userId;});
-      if(!selectedUser){toast('User not found','e');return;}
-
-      var ct=tasksFor(userId,date).length;
-      TASKS.push({
-        id:++TID,
-        staffId:userId,
-        date:date,
-        n:ct+1,
-        desc:desc.trim(),
-        status:'Pending',
-        action:'',
-        remarks:'',
-        staffRem:'',
-        adminRem:'',
-        priority:pri
-      });
-      toast('Task assigned to '+esc(selectedUser.name),'s');
-      addFeed('Task assigned to '+selectedUser.name+' for '+date,'blue');
-      schedSave();
-      closeOv();
-      render();
-    };
+    toast('Please select a user first','w');
     return;
   }
 
-  // Original code for when specific user ID is provided
-  var s=STAFF.find(function(x){return x.id===id;});if(!s)return;
+  var active=activeStaff();
+  // Code for when specific user ID is provided
+  // Use == instead of === to handle string/number type differences
+  var s=STAFF.find(function(x){return x.id==id;});
+  if(!s){
+    console.error('User not found in STAFF array. ID:',id,'Type:',typeof id,'STAFF:',STAFF);
+    toast('User not found. Please refresh the page.','e');
+    return;
+  }
   var existing=tasksFor(s.id,S.selDate);
   var dateFormatted=new Date(S.selDate).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
 
@@ -1613,16 +1545,21 @@ function openAssignTask(id){
       '</div>'+
       exRows+
       '<div style="border-top:1.5px solid var(--border);margin-top:16px;padding-top:16px">'+
-        '<div class="ml" style="margin-bottom:8px">New Task</div>'+
-        '<textarea class="mi" id="at-desc" placeholder="Enter task description..." style="resize:none;min-height:70px;margin-bottom:10px;line-height:1.5"></textarea>'+
-        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'+
-          '<div><div class="ml">Date</div><input type="date" class="mi last" id="at-date" value="'+_today+'"></div>'+
-          '<div><div class="ml">Priority</div><select class="msel last" id="at-pri">'+
-            '<option value="High">High</option>'+
-            '<option value="Medium" selected>Medium</option>'+
-            '<option value="Low">Low</option>'+
-          '</select></div>'+
-        '</div>'+
+        '<div class="ml" style="margin-bottom:8px">Add New Tasks (Max 5 per day)</div>'+
+        [1,2,3,4,5].map(function(i){
+          return '<div style="background:'+(i===1?'var(--bg2)':'transparent')+';border:1.5px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px">'+
+            '<div style="font-size:11px;font-weight:600;color:var(--t3);margin-bottom:6px">Task '+i+'</div>'+
+            '<textarea class="mi" id="at-desc-'+i+'" placeholder="Enter task description..." style="resize:none;min-height:60px;margin-bottom:8px;line-height:1.5"></textarea>'+
+            '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'+
+              '<div><div class="ml" style="font-size:10px">Date</div><input type="date" class="mi" id="at-date-'+i+'" value="'+_today+'" style="font-size:12px;padding:6px 8px"></div>'+
+              '<div><div class="ml" style="font-size:10px">Priority</div><select class="msel" id="at-pri-'+i+'" style="font-size:12px;padding:6px 8px">'+
+                '<option value="High">High</option>'+
+                '<option value="Medium" selected>Medium</option>'+
+                '<option value="Low">Low</option>'+
+              '</select></div>'+
+            '</div>'+
+          '</div>';
+        }).join('')+
       '</div>'+
     '</div>'+
     '<div class="m-foot">'+
@@ -1639,25 +1576,43 @@ function openAssignTask(id){
   el('m-x').onclick=closeOv;
   el('at-cl').onclick=closeOv;
   el('at-sv').onclick=function(){
-    var desc=(el('at-desc')||{}).value||'';
-    if(!desc.trim()){toast('Task description is required','w');return;}
-    var date=(el('at-date')||{}).value||S.selDate;
-    var pri=(el('at-pri')||{}).value||'Medium';
-    var ct=tasksFor(s.id,date).length;
-    TASKS.push({
-      id:++TID,
-      staffId:s.id,
-      date:date,
-      n:ct+1,
-      desc:desc.trim(),
-      status:'Pending',
-      action:'',
-      remarks:'',
-      staffRem:'',
-      priority:pri
-    });
-    toast('Task assigned to '+esc(s.name),'s');
-    addFeed('Task assigned to '+s.name+' for '+date,'blue');
+    var tasksAdded=0;
+    var tasksByDate={};
+
+    // Loop through all 5 task inputs
+    for(var i=1;i<=5;i++){
+      var desc=(el('at-desc-'+i)||{}).value||'';
+      if(!desc.trim())continue; // Skip empty tasks
+
+      var date=(el('at-date-'+i)||{}).value||S.selDate;
+      var pri=(el('at-pri-'+i)||{}).value||'Medium';
+
+      // Track tasks per date to calculate correct task numbers
+      if(!tasksByDate[date]){
+        tasksByDate[date]=tasksFor(s.id,date).length;
+      }
+      tasksByDate[date]++;
+
+      TASKS.push({
+        id:++TID,
+        staffId:s.id,
+        date:date,
+        n:tasksByDate[date],
+        desc:desc.trim(),
+        status:'Pending',
+        action:'',
+        remarks:'',
+        staffRem:'',
+        adminRem:'',
+        priority:pri
+      });
+      tasksAdded++;
+    }
+
+    if(tasksAdded===0){toast('Please enter at least one task description','w');return;}
+
+    toast(tasksAdded+' task'+(tasksAdded>1?'s':'')+' assigned to '+esc(s.name),'s');
+    addFeed(tasksAdded+' task'+(tasksAdded>1?'s':'')+' assigned to '+s.name,'blue');
     schedSave();
     closeOv();
     render();
@@ -1694,6 +1649,7 @@ function autoSave(){
   // Save tasks data to GitHub
   fetch('/api/tasks/save',{
     method:'POST',
+    credentials:'same-origin',
     headers:{'Content-Type':'application/json','X-CSRF-TOKEN':document.querySelector('meta[name="csrf-token"]')?.content||''},
     body:JSON.stringify({tasks:TASKS})
   }).then(function(r){return r.json();}).then(function(data){
@@ -1718,15 +1674,42 @@ function schedSave(){clearTimeout(_saveTimer);_saveTimer=setTimeout(autoSave,800
 function restoreData(){
   var restored=false;
 
+  // Ensure current user is always in STAFF array as fallback
+  if(AUTH_USER&&AUTH_USER.id){
+    var currentUserExists=STAFF.find(function(s){return s.id===AUTH_USER.id;});
+    if(!currentUserExists){
+      STAFF.push({
+        id:AUTH_USER.id,
+        name:AUTH_USER.name,
+        email:AUTH_USER.email,
+        role:AUTH_USER.role||'User',
+        department:'',
+        inst:'',
+        active:true
+      });
+    }
+  }
+
   // Load users from User Management API
   fetch('/admin/users',{
     method:'GET',
+    credentials:'same-origin',
     headers:{
       'Content-Type':'application/json',
       'X-CSRF-TOKEN':document.querySelector('meta[name="csrf-token"]')?.content||''
     }
-  }).then(function(r){return r.json();}).then(function(response){
-    if(response.success&&response.users&&response.users.length){
+  }).then(function(r){
+    if(!r.ok){
+      console.warn('User API returned status:',r.status);
+      return null;
+    }
+    // Try to parse as JSON regardless of content-type header
+    return r.json().catch(function(){
+      console.warn('User API response could not be parsed as JSON');
+      return null;
+    });
+  }).then(function(response){
+    if(response&&response.success&&response.users&&response.users.length){
       STAFF.length=0;
       response.users.forEach(function(user){
         // Convert user format to staff format
@@ -1748,9 +1731,20 @@ function restoreData(){
   // Load tasks data from GitHub
   fetch('/api/tasks',{
     method:'GET',
+    credentials:'same-origin',
     headers:{'Content-Type':'application/json'}
-  }).then(function(r){return r.json();}).then(function(response){
-    if(response.success&&response.data&&response.data.length){
+  }).then(function(r){
+    if(!r.ok){
+      console.warn('Tasks API returned status:',r.status);
+      return null;
+    }
+    // Try to parse as JSON regardless of content-type header
+    return r.json().catch(function(){
+      console.warn('Tasks API response could not be parsed as JSON');
+      return null;
+    });
+  }).then(function(response){
+    if(response&&response.success&&response.data&&response.data.length){
       TASKS.length=0;
       response.data.forEach(function(t){TASKS.push(t);});
       restored=true;
@@ -1999,6 +1993,7 @@ function handleChangePassword(e) {
   // Send to backend
   fetch('/admin/profile/change-password', {
     method: 'POST',
+    credentials: 'same-origin',
     headers: {
       'Content-Type': 'application/json',
       'X-CSRF-TOKEN': token,
@@ -2106,6 +2101,7 @@ function loadUsers() {
 
   fetch('/admin/users', {
     method: 'GET',
+    credentials: 'same-origin',
     headers: {
       'Accept': 'application/json',
       'X-CSRF-TOKEN': token
@@ -2219,6 +2215,7 @@ function performDeleteUser(userId, userName) {
 
   fetch('/admin/users/' + userId, {
     method: 'DELETE',
+    credentials: 'same-origin',
     headers: {
       'Accept': 'application/json',
       'X-CSRF-TOKEN': token
@@ -2253,6 +2250,7 @@ function editUser(userId) {
   // Fetch user data
   fetch('/admin/users', {
     method: 'GET',
+    credentials: 'same-origin',
     headers: {
       'Accept': 'application/json',
       'X-CSRF-TOKEN': token
@@ -2349,6 +2347,7 @@ function handleSaveUser(e) {
   // Send to backend
   fetch(url, {
     method: method,
+    credentials: 'same-origin',
     headers: {
       'Content-Type': 'application/json',
       'X-CSRF-TOKEN': token,
@@ -2457,6 +2456,7 @@ function handleBulkUpload(event) {
 
       fetch('/admin/users/bulk-import', {
         method: 'POST',
+        credentials: 'same-origin',
         headers: {
           'Content-Type': 'application/json',
           'X-CSRF-TOKEN': token,
