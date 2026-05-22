@@ -1125,6 +1125,12 @@ function showMyTasks(){
           '<option value="Approved"'+(S.myTaskFilters.status==='Approved'?' selected':'')+'>Approved</option>'+
           '<option value="Rejected"'+(S.myTaskFilters.status==='Rejected'?' selected':'')+'>Rejected</option>'+
         '</select>'+
+        '<button id="add-my-task-btn" class="btn" style="background:#14b8a6;color:#ffffff;padding:8px 16px;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;margin-left:8px">'+
+          '<svg style="width:16px;height:16px" fill="none" stroke="currentColor" viewBox="0 0 24 24">'+
+            '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>'+
+          '</svg>'+
+          'Add Task'+
+        '</button>'+
       '</div>'+
     '</div>';
 
@@ -1258,6 +1264,14 @@ function showMyTasks(){
     status.onchange=function(){
       S.myTaskFilters.status=this.value;
       showMyTasks();
+    };
+  }
+
+  // Bind Add Task button
+  var addTaskBtn=el('add-my-task-btn');
+  if(addTaskBtn){
+    addTaskBtn.onclick=function(){
+      openAssignTask(AUTH_USER.id);
     };
   }
 }
@@ -2019,10 +2033,12 @@ function openUserManagementModal() {
   var form = document.getElementById('addUserForm');
   var title = document.getElementById('userMgmtTitle');
   var subtitle = document.getElementById('userMgmtSubtitle');
+  var bulkUploadSection = document.getElementById('bulkUploadSection');
 
   if (AUTH_USER.isAdmin) {
     // Admin view - show form and management title
     if (form) form.style.display = 'block';
+    if (bulkUploadSection) bulkUploadSection.style.display = 'block';
     if (title) title.textContent = 'User Management';
     if (subtitle) subtitle.textContent = 'Add new user to the system';
     // Reset to add mode
@@ -2030,6 +2046,7 @@ function openUserManagementModal() {
   } else {
     // Non-admin view - hide form, show profile title
     if (form) form.style.display = 'none';
+    if (bulkUploadSection) bulkUploadSection.style.display = 'none';
     if (title) title.textContent = 'My Profile';
     if (subtitle) subtitle.textContent = 'View and edit your profile information';
   }
@@ -2360,6 +2377,127 @@ function handleSaveUser(e) {
     console.error('Error:', error);
     toast('An error occurred. Please try again.', 'e');
   });
+}
+
+// Bulk Upload Functions
+function downloadUserTemplate() {
+  // Download template from backend
+  window.location.href = '/admin/users/template/download';
+  toast('Downloading template...', 's');
+}
+
+function handleBulkUpload(event) {
+  var file = event.target.files[0];
+  if (!file) return;
+
+  // Show progress indicator
+  var progress = document.getElementById('bulkUploadProgress');
+  if (progress) progress.style.display = 'block';
+
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      var data = new Uint8Array(e.target.result);
+      var workbook = XLSX.read(data, { type: 'array' });
+
+      // Get first sheet
+      var firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+      var jsonData = XLSX.utils.sheet_to_json(firstSheet);
+
+      if (jsonData.length === 0) {
+        toast('The Excel file is empty or invalid', 'e');
+        if (progress) progress.style.display = 'none';
+        return;
+      }
+
+      // Validate and prepare users data
+      var users = [];
+      var errors = [];
+
+      jsonData.forEach(function(row, index) {
+        var rowNum = index + 2; // +2 because Excel rows start at 1 and we have a header row
+
+        // Validate required fields
+        if (!row.Name || !row.Email) {
+          errors.push('Row ' + rowNum + ': Name and Email are required');
+          return;
+        }
+
+        // Basic email validation
+        var emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(row.Email)) {
+          errors.push('Row ' + rowNum + ': Invalid email format');
+          return;
+        }
+
+        users.push({
+          name: row.Name,
+          email: row.Email,
+          role: row.Role || '',
+          department: row.Department || ''
+          // Password is always set to 12345678 by backend
+        });
+      });
+
+      if (errors.length > 0) {
+        toast('Validation errors: ' + errors.join(', '), 'e');
+        if (progress) progress.style.display = 'none';
+        return;
+      }
+
+      if (users.length === 0) {
+        toast('No valid users found in the file', 'e');
+        if (progress) progress.style.display = 'none';
+        return;
+      }
+
+      // Send to backend
+      var csrfToken = document.querySelector('meta[name="csrf-token"]');
+      var token = csrfToken ? csrfToken.getAttribute('content') : '';
+
+      fetch('/admin/users/bulk-import', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-TOKEN': token,
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({ users: users })
+      })
+      .then(function(response) {
+        return response.json();
+      })
+      .then(function(result) {
+        if (progress) progress.style.display = 'none';
+
+        if (result.success) {
+          toast('Successfully imported ' + result.count + ' user(s)!', 's');
+          // Reset file input
+          event.target.value = '';
+          // Reload users list
+          loadUsers();
+          // Refresh main view if needed
+          if (typeof renderContent === 'function' && S.view === 'tasks') {
+            setTimeout(renderContent, 300);
+          }
+        } else {
+          toast(result.message || 'Failed to import users', 'e');
+        }
+      })
+      .catch(function(error) {
+        console.error('Error:', error);
+        if (progress) progress.style.display = 'none';
+        toast('An error occurred during import. Please try again.', 'e');
+      });
+
+    } catch (error) {
+      console.error('Error parsing Excel:', error);
+      toast('Failed to parse Excel file. Please check the format.', 'e');
+      if (progress) progress.style.display = 'none';
+    }
+  };
+
+  reader.readAsArrayBuffer(file);
 }
 
 // Close modals when clicking outside

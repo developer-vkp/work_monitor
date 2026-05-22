@@ -61,30 +61,32 @@
 
 <!-- Profile Modal -->
 <div class="ov" id="profileModal" style="display:none">
-  <div class="md" style="max-width:500px;width:100%">
-    <div class="md-hdr">
-      <div style="display:flex;align-items:center;gap:12px">
-        <div class="ava ava-lg" style="background:var(--grad);color:#fff"></div>
+  <div class="md" style="max-width:500px;width:100%;background:#ffffff;border-radius:12px;box-shadow:0 20px 25px -5px rgba(0,0,0,0.1),0 10px 10px -5px rgba(0,0,0,0.04);overflow:hidden;position:relative">
+    <div class="md-hdr" style="background:#ffffff;border-bottom:1px solid #e5e7eb;padding:20px 24px;position:relative">
+      <div style="display:flex;align-items:center;gap:12px;padding-right:40px">
+        <div class="ava ava-lg" style="background:var(--grad);color:#fff">{{ strtoupper(substr(Auth::user()->name ?? Auth::user()->email, 0, 2)) }}</div>
         <div>
-          <div style="font-size:18px;font-weight:600;color:var(--t1)">{{ Auth::user()->name ?? "Admin" }}</div>
-          <div style="font-size:12px;color:var(--t3)">{{ Auth::user()->email }}</div>
+          <div style="font-size:18px;font-weight:600;color:#1f2937">{{ Auth::user()->name ?? "Admin" }}</div>
+          <div style="font-size:12px;color:#6b7280">{{ Auth::user()->email }}</div>
         </div>
       </div>
-      <button class="md-close" onclick="closeProfileModal()">&times;</button>
+      <button onclick="closeProfileModal()" style="position:absolute;top:50%;right:24px;transform:translateY(-50%);background:#f3f4f6;border:none;width:32px;height:32px;border-radius:6px;color:#6b7280;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:20px;line-height:1;transition:all 0.2s" onmouseover="this.style.background='#e5e7eb';this.style.color='#374151'" onmouseout="this.style.background='#f3f4f6';this.style.color='#6b7280'">&times;</button>
     </div>
-    <div class="md-body">
+    <div class="md-body" style="background:#ffffff;padding:24px">
       <div style="display:grid;gap:20px">
         <div>
-          <div style="font-size:12px;color:var(--t3);font-weight:600;margin-bottom:6px">Full Name</div>
-          <div id="profile-name" style="font-size:15px;color:var(--t1);font-weight:500">{{ Auth::user()->name ?? "Admin" }}</div>
+          <div style="font-size:12px;color:#6b7280;font-weight:600;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.05em">Full Name</div>
+          <div id="profile-name" style="font-size:15px;color:#1f2937;font-weight:500">{{ Auth::user()->name ?? "Admin" }}</div>
         </div>
         <div>
-          <div style="font-size:12px;color:var(--t3);font-weight:600;margin-bottom:6px">Email Address</div>
-          <div id="profile-email" style="font-size:15px;color:var(--t1);font-weight:500">{{ Auth::user()->email }}</div>
+          <div style="font-size:12px;color:#6b7280;font-weight:600;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.05em">Email Address</div>
+          <div id="profile-email" style="font-size:15px;color:#1f2937;font-weight:500">{{ Auth::user()->email }}</div>
         </div>
         <div>
-          <div style="font-size:12px;color:var(--t3);font-weight:600;margin-bottom:6px">Role</div>
-          <div id="profile-role" style="font-size:15px;color:var(--t1);font-weight:500;text-transform:uppercase">{{ Auth::user()->role ?? "admin" }}</div>
+          <div style="font-size:12px;color:#6b7280;font-weight:600;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.05em">Role</div>
+          <div id="profile-role" style="font-size:15px;color:#1f2937;font-weight:500;text-transform:capitalize">
+            <span style="display:inline-block;background:#eff6ff;color:#1e40af;padding:4px 12px;border-radius:6px;font-size:13px;font-weight:600">{{ Auth::user()->role ?? "admin" }}</span>
+          </div>
         </div>
       </div>
     </div>
@@ -107,6 +109,40 @@
       <button onclick="closeUserManagementModal()" style="position:absolute;top:50%;right:24px;transform:translateY(-50%);background:#f3f4f6;border:none;width:32px;height:32px;border-radius:6px;color:#6b7280;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:20px;line-height:1;transition:all 0.2s" onmouseover="this.style.background='#e5e7eb';this.style.color='#374151'" onmouseout="this.style.background='#f3f4f6';this.style.color='#6b7280'">&times;</button>
     </div>
     <div class="md-body" style="background:#ffffff;padding:24px;max-height:70vh;overflow-y:auto">
+      <!-- Bulk Upload Section -->
+      <div id="bulkUploadSection" style="display:none;background:#f9fafb;border:2px dashed #d1d5db;border-radius:10px;padding:20px;margin-bottom:20px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <svg style="width:20px;height:20px;color:#3b82f6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+            </svg>
+            <div>
+              <div style="font-size:14px;font-weight:600;color:#1f2937">Bulk Import Users</div>
+              <div style="font-size:12px;color:#6b7280">Upload Excel file with user data</div>
+            </div>
+          </div>
+          <a href="javascript:void(0)" onclick="downloadUserTemplate()" style="font-size:12px;color:#3b82f6;text-decoration:none;display:flex;align-items:center;gap:4px;font-weight:500;padding:6px 12px;background:#eff6ff;border-radius:6px;transition:background 0.2s" onmouseover="this.style.background='#dbeafe'" onmouseout="this.style.background='#eff6ff'">
+            <svg style="width:14px;height:14px" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+            </svg>
+            Download Template
+          </a>
+        </div>
+        <input type="file" id="bulkUserUpload" accept=".xlsx,.xls" style="display:none" onchange="handleBulkUpload(event)">
+        <button onclick="document.getElementById('bulkUserUpload').click()" style="width:100%;background:#ffffff;border:1.5px solid #e5e7eb;border-radius:8px;padding:14px;font-size:13px;color:#374151;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:all 0.2s" onmouseover="this.style.borderColor='#3b82f6';this.style.background='#f9fafb'" onmouseout="this.style.borderColor='#e5e7eb';this.style.background='#ffffff'">
+          <svg style="width:18px;height:18px;color:#3b82f6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+          </svg>
+          Choose Excel File to Upload
+        </button>
+        <div style="margin-top:10px;padding:12px;background:#fef3c7;border-radius:6px;font-size:12px;color:#92400e">
+          <strong>Required:</strong> Name, Email &nbsp;|&nbsp; <strong>Optional:</strong> Role, Department &nbsp;|&nbsp; <strong>Password:</strong> All users will get "12345678"
+        </div>
+        <div id="bulkUploadProgress" style="display:none;margin-top:10px;padding:12px;background:#dbeafe;border-radius:6px;font-size:12px;color:#1e40af">
+          Processing... Please wait.
+        </div>
+      </div>
+
       <form id="addUserForm" onsubmit="handleSaveUser(event)" style="display:none">
         <input type="hidden" id="editUserId" name="userId">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
@@ -189,6 +225,8 @@ var AUTH_USER = {
   isAdmin: {{ in_array(strtolower(Auth::user()->role ?? 'admin'), ['admin', 'administrator']) ? 'true' : 'false' }}
 };
 </script>
+<!-- SheetJS library for Excel parsing -->
+<script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
 <script src="{{ asset('js/workmonitor.js') }}?v={{ time() }}"></script>
 @if(session('login_success'))
 <script>

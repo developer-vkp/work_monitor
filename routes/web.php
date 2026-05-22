@@ -22,7 +22,9 @@ Route::middleware('auth')->group(function () {
 
     // User Management
     Route::get('/admin/users', [UserController::class, 'index'])->name('admin.users.index');
+    Route::get('/admin/users/template/download', [UserController::class, 'downloadTemplate'])->name('admin.users.template');
     Route::post('/admin/users/create', [UserController::class, 'store'])->name('admin.users.create');
+    Route::post('/admin/users/bulk-import', [UserController::class, 'bulkImport'])->name('admin.users.bulk-import');
     Route::put('/admin/users/{id}', [UserController::class, 'update'])->name('admin.users.update');
     Route::delete('/admin/users/{id}', [UserController::class, 'destroy'])->name('admin.users.destroy');
 
