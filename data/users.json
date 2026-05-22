@@ -56,15 +56,6 @@
             "department": "Design",
             "password": "$2y$12$KzurO1M.pI53RB3M4OkQQuF.Qqpn10oTCbwIJhDLnWj1z7yx\/p7Aq",
             "created_at": "2026-05-22 17:04:35"
-        },
-        {
-            "id": "U1779469476",
-            "name": "Mike Johnson",
-            "email": "mike.johnson@example.com",
-            "role": "Manager",
-            "department": "Operations",
-            "password": "$2y$12$L5Mxk0c8WPTgb\/IS\/St1KOv4BwKoP.i9Qhz6vy\/6zvV\/NSbzprk52",
-            "created_at": "2026-05-22 17:04:35"
         }
     ]
 }
