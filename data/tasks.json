@@ -7,7 +7,7 @@
             "n": 1,
             "desc": "New task",
             "status": "Pending",
-            "action": "Approved",
+            "action": "Rejected",
             "remarks": "Good",
             "staffRem": null,
             "priority": "Medium"
@@ -43,7 +43,7 @@
             "n": 1,
             "desc": "New task",
             "status": "Pending",
-            "action": null,
+            "action": "Rejected",
             "remarks": null,
             "staffRem": null,
             "priority": "Medium"
