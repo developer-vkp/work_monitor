@@ -162,6 +162,45 @@
             "staffRem": null,
             "adminRem": null,
             "priority": "Medium"
+        },
+        {
+            "id": 118,
+            "staffId": "U1779516908",
+            "date": "2026-05-23",
+            "n": 1,
+            "desc": "Vendor Statement",
+            "status": "Pending",
+            "action": null,
+            "remarks": null,
+            "staffRem": null,
+            "adminRem": null,
+            "priority": "Medium"
+        },
+        {
+            "id": 119,
+            "staffId": "U1779516908",
+            "date": "2026-05-23",
+            "n": 2,
+            "desc": "Capex",
+            "status": "Pending",
+            "action": null,
+            "remarks": null,
+            "staffRem": null,
+            "adminRem": null,
+            "priority": "Medium"
+        },
+        {
+            "id": 120,
+            "staffId": "U1779516908",
+            "date": "2026-05-23",
+            "n": 3,
+            "desc": "Transport",
+            "status": "Pending",
+            "action": null,
+            "remarks": null,
+            "staffRem": null,
+            "adminRem": null,
+            "priority": "Medium"
         }
     ]
 }
