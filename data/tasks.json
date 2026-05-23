@@ -105,7 +105,7 @@
             "n": 1,
             "desc": "Civil Work Orders",
             "status": "Pending",
-            "action": null,
+            "action": "Approved",
             "remarks": null,
             "staffRem": null,
             "adminRem": null,
