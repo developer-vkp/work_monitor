@@ -144,7 +144,7 @@
             "n": 4,
             "desc": "Old Payments bills",
             "status": "Pending",
-            "action": null,
+            "action": "Approved",
             "remarks": null,
             "staffRem": null,
             "adminRem": null,
