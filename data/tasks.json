@@ -157,7 +157,7 @@
             "n": 5,
             "desc": "Additional Requirement",
             "status": "Pending",
-            "action": null,
+            "action": "Approved",
             "remarks": null,
             "staffRem": null,
             "adminRem": null,
