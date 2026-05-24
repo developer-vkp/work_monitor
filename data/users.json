@@ -11,16 +11,6 @@
             "updated_at": "2026-05-18 10:46:41"
         },
         {
-            "id": "U1779023039",
-            "name": "Sasi AO",
-            "email": "sasi@vkp.org",
-            "role": "user",
-            "password": "$2y$12$yRJVrF9YiDAcY5PG8c79K.oxsg.vNG5ECZyCsRej6kR0iI\/I9dSBm",
-            "created_at": "2026-05-17 13:03:59",
-            "department": "Engineering",
-            "updated_at": "2026-05-19 14:10:34"
-        },
-        {
             "id": "U1779100079",
             "name": "Devi",
             "email": "devi@gmail.com",
