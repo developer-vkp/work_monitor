@@ -20,15 +20,6 @@
             "created_at": "2026-05-18 10:27:59"
         },
         {
-            "id": "U1779516454",
-            "name": "GM",
-            "email": "gm@vkp.org",
-            "role": "Engineer",
-            "department": "Engineering",
-            "password": "$2y$12$kJmhSasWf5VVoCmo350ZE.KT3gvqrLFJXE8VArvruAO0VR5azHsMG",
-            "created_at": "2026-05-23 06:07:34"
-        },
-        {
             "id": "U1779516908",
             "name": "Valarmathi",
             "email": "valarmathi@vkp.org",
