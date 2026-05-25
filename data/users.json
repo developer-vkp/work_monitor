@@ -766,6 +766,15 @@
             "department": "Finance",
             "password": "$2y$12$r04JpvDmQUSYoAAPhd66B.6rgYjsa6QACY.la6UKPYFSNWnotxCla",
             "created_at": "2026-05-25 07:30:07"
+        },
+        {
+            "id": "U1779705082",
+            "name": "AD",
+            "email": "ad@vkp.org",
+            "role": "Administrator",
+            "department": "Operations",
+            "password": "$2y$12$S8mLkg0OfjO6kCmF73Afje7aY5KidnHOAYGccx2.K3ILDfmtSXMfy",
+            "created_at": "2026-05-25 10:31:22"
         }
     ]
 }
