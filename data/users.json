@@ -757,6 +757,15 @@
             "department": "Support",
             "password": "$2y$12$6o.zKTvB5DGZV6x0QAEHuOfl8N74HbxXyka5qRQTpyKSX7ScK2u\/e",
             "created_at": "2026-05-25 07:21:54"
+        },
+        {
+            "id": "U1779694206",
+            "name": "Selvam",
+            "email": "selvam@vkp.org",
+            "role": "User",
+            "department": "Finance",
+            "password": "$2y$12$r04JpvDmQUSYoAAPhd66B.6rgYjsa6QACY.la6UKPYFSNWnotxCla",
+            "created_at": "2026-05-25 07:30:07"
         }
     ]
 }
