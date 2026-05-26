@@ -63,13 +63,14 @@ return [
 
     'providers' => [
         'users' => [
-            'driver' => 'github',
+            'driver' => 'eloquent',
             'model' => env('AUTH_MODEL', User::class),
         ],
 
+        // GitHub driver removed - now using database
         // 'users' => [
-        //     'driver' => 'database',
-        //     'table' => 'users',
+        //     'driver' => 'github',
+        //     'model' => env('AUTH_MODEL', User::class),
         // ],
     ],
 

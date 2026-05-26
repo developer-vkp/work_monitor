@@ -2,7 +2,7 @@
 var ROLES=['General Manager','Finance Controller','Admin Officer','Zonal Head','Zone Safety Head','School Head','Head Master','Vice Principal','SRPL Head','Regional Coordinator','Programme Officer','CCTV Coordinator','PED Coordinator','Admissions Head','Medical Officer','Engineer','RSA Officer','Other (type manually)'];
 var INSTS=['Management','Key Members','Zonal Heads','Zone Safety','Admissions','School Heads','SRPL','Other'];
 var PAL=['#0891B2','#7C3AED','#DB2777','#059669','#B45309','#DC2626','#0284C7','#065F46','#9333EA','#0F766E'];
-function gc(id){return PAL[Math.abs(parseInt((id||'0').replace(/\D/g,''))%PAL.length)];}
+function gc(id){return PAL[Math.abs(parseInt(String(id||'0').replace(/\D/g,''))%PAL.length)];}
 function gbg(id){return gc(id)+'18';}
 function ini(n){return (n||'').split(' ').filter(Boolean).slice(0,2).map(function(x){return x[0];}).join('').toUpperCase();}
 function fmtDate(d){if(!d)return'';var o=new Date(d),t=new Date();t.setHours(0,0,0,0);o.setHours(0,0,0,0);var df=(t-o)/864e5;if(df===0)return'Today';if(df===1)return'Yesterday';return o.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'2-digit'});}
@@ -25,7 +25,8 @@ function addFeed(msg,col){FEED.unshift({id:++TID,msg:msg,col:col||'blue',time:ne
 var S={role:AUTH_USER.role||'user',staffId:AUTH_USER.id||'',selStaff:null,selDate:_today,
   view:AUTH_USER.isAdmin?'overview':'tasks',  // Default view based on role
   boardFilter:'all',boardSearch:'',boardCollapsed:{},boardDp:null,
-  showAddForm:false,taskFromDate:relDate(-1),taskToDate:_today};
+  showAddForm:false,taskFromDate:relDate(-1),taskToDate:_today,
+  overviewFromDate:_today,overviewToDate:_today};
 var _newStaff={name:'',email:'',role:'',inst:''};
 var _editSD={};
 
@@ -62,6 +63,12 @@ function rLp(){
       '<svg class="lp-nav-ic" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>'+
       '<span class="lp-nav-lbl">Dashboard</span>'+
     '</div>';
+
+    // User Management - only for Administrator role
+    navItems += '<div class="lp-nav-item '+(S.view==='users'?'on':'')+'" data-view="users">'+
+      '<svg class="lp-nav-ic" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>'+
+      '<span class="lp-nav-lbl">User Management</span>'+
+    '</div>';
   }
 
   // Tasks - for all users
@@ -75,8 +82,14 @@ function rLp(){
       '<div class="lp-nav">'+navItems+'</div>'+
     '</div>';
 
-  // Bind
-  el('lp').addEventListener('click',function(e){
+  // Bind navigation clicks
+  var lpNav=el('lp');
+  // Remove old listener if exists
+  if(lpNav._clickHandler){
+    lpNav.removeEventListener('click',lpNav._clickHandler);
+  }
+  // Add new listener
+  lpNav._clickHandler=function(e){
     var nav=e.target.closest('[data-view]');
     if(nav){
       var view=nav.dataset.view;
@@ -90,7 +103,8 @@ function rLp(){
       render();
       return;
     }
-  });
+  };
+  lpNav.addEventListener('click',lpNav._clickHandler);
 }
 
 // ── TOPBAR ───────────────────────────────────────────────────────
@@ -160,11 +174,26 @@ function rTb(){
 // ── TAB BAR ──────────────────────────────────────────────────────
 function rTabBar(){
   var tbar=el('tbar');
-  if(!AUTH_USER.isAdmin||S.view==='tasks'){tbar.style.display='none';return;}
+  if(!AUTH_USER.isAdmin||S.view==='tasks'||S.view==='users'){tbar.style.display='none';return;}
   tbar.style.display='flex';
   var tabs=[{v:'overview',lbl:'&#9617; Overview'},{v:'board',lbl:'&#9776; Board'},{v:'timeline',lbl:'&#9641; Timeline'},{v:'analytics',lbl:'&#9656; Analytics'}];
   tbar.innerHTML=tabs.map(function(t){return '<div class="tab'+(S.view===t.v?' on':'')+'" data-tab="'+t.v+'">'+t.lbl+'</div>';}).join('');
-  tbar.addEventListener('click',function(e){var tab=e.target.closest('[data-tab]');if(!tab)return;S.view=tab.dataset.tab;S.selStaff=null;renderContent();rLp();rTabBar();});
+
+  // Remove old listener if exists
+  if(tbar._clickHandler){
+    tbar.removeEventListener('click',tbar._clickHandler);
+  }
+  // Add new listener
+  tbar._clickHandler=function(e){
+    var tab=e.target.closest('[data-tab]');
+    if(!tab)return;
+    S.view=tab.dataset.tab;
+    S.selStaff=null;
+    renderContent();
+    rLp();
+    rTabBar();
+  };
+  tbar.addEventListener('click',tbar._clickHandler);
 }
 
 // ── STAFF MANAGEMENT PAGE ─────────────────────────────────────────
@@ -173,6 +202,14 @@ function rTabBar(){
 // ── OVERVIEW ──────────────────────────────────────────────────────
 function rOverview(){
   if(S.selStaff){el('ct').innerHTML='<div class="dash fi">'+rStaffDetail(S.selStaff)+'</div>';bindDetailEvents();return;}
+
+  // Helper function to get tasks in date range for a user
+  var tasksInRange=function(staffId,fromDate,toDate){
+    return TASKS.filter(function(t){
+      return t.staffId===staffId && t.date>=fromDate && t.date<=toDate;
+    });
+  };
+
   var st=allStats();var tot=st.total;
   var apP=tot?Math.round(st.ap/tot*100):0,rjP=tot?Math.round(st.rj/tot*100):0;
   var pnP=tot?Math.round(st.pn/tot*100):0,dnP=tot?Math.round(st.dn/tot*100):0;
@@ -180,12 +217,24 @@ function rOverview(){
   var kpiHTML=kpis.map(function(k){return '<div class="kpi '+k.cl+'" data-kpi-filter="'+k.filter+'" style="cursor:pointer"><div class="kpi-lbl">'+esc(k.lbl)+'</div><div class="kpi-val">'+k.val+'</div><div class="kpi-sub">'+k.pct+'% of total</div><div class="kpi-bar"><div class="kpi-fill" style="width:'+k.pct+'%;background:'+k.fc+'"></div></div></div>';}).join('');
   var active=activeStaff();
   var thumbsHTML=active.map(function(s,i){
-    var st2=tasksFor(s.id,S.selDate);
+    var st2=tasksInRange(s.id,S.overviewFromDate,S.overviewToDate);
     var ap2=st2.filter(function(t){return t.action==='Approved';}).length;
     var rj2=st2.filter(function(t){return t.action==='Rejected';}).length;
     var pn2=st2.filter(function(t){return !t.action;}).length;
     var p=perf(s.id);var pc=p>=70?'var(--green)':p>=40?'var(--amber)':'var(--red)';
-    var dots=[1,2,3,4,5].map(function(n){var t=st2.find(function(x){return x.n===n;});var bc=!t?'var(--border)':t.action==='Approved'?'var(--green)':t.action==='Rejected'?'var(--red)':t.status==='Done'?'var(--amber)':'var(--border2)';return '<div class="st-dot" style="background:'+bc+'"></div>';}).join('');
+    var totalTasks=st2.length;
+    var maxDots=5;
+    var dots='';
+    for(var n=1;n<=maxDots;n++){
+      if(n<=totalTasks){
+        var tasksOnN=st2.slice(n-1,n);
+        var firstTask=tasksOnN[0];
+        var bc=firstTask.action==='Approved'?'var(--green)':firstTask.action==='Rejected'?'var(--red)':firstTask.status==='Done'?'var(--amber)':'var(--border2)';
+        dots+='<div class="st-dot" style="background:'+bc+'"></div>';
+      }else{
+        dots+='<div class="st-dot" style="background:var(--border)"></div>';
+      }
+    }
     return '<div class="sthumb" data-i="'+i+'"><div class="st-head"><div class="ava ava-lg" style="background:'+gbg(s.id)+';color:'+gc(s.id)+'">'+ini(s.name)+'</div>'+
       '<div class="st-info"><div class="st-name">'+esc(s.name)+'</div><div class="st-role">'+esc(s.role)+'</div><div class="st-role">'+esc(s.inst)+'</div></div>'+
       '<div class="st-pct" style="color:'+pc+'">'+p+'%</div></div>'+
@@ -193,34 +242,155 @@ function rOverview(){
         '<span class="st-s" style="background:var(--rlight);color:var(--red)">&#10007; '+rj2+'</span>'+
         '<span class="st-s" style="background:var(--alight);color:var(--amber)">&#9675; '+pn2+'</span></div>'+
       '<div class="st-dots">'+dots+'</div>'+
-      '<div class="st-foot"><span class="st-today">'+st2.length+' of 5 tasks</span><button class="view-btn">Review &rsaquo;</button></div>'+
+      '<div class="st-foot"><span class="st-today">'+totalTasks+' tasks</span><button class="view-btn">Review &rsaquo;</button></div>'+
     '</div>';
   }).join('');
   var feedHTML=FEED.slice(0,8).map(function(a){var c={'green':'var(--green)','red':'var(--red)','amber':'var(--amber)','blue':'var(--p3)'}[a.col]||'var(--p3)';return '<div class="feed-row"><div class="feed-dot" style="background:'+c+'"></div><div><div class="feed-txt">'+esc(a.msg)+'</div><div class="feed-tm">'+esc(a.time)+'</div></div></div>';}).join('');
+
+  var dateRangeText=(S.overviewFromDate===S.overviewToDate)?fmtDate(S.overviewFromDate):(fmtDate(S.overviewFromDate)+' to '+fmtDate(S.overviewToDate));
+
   el('ct').innerHTML='<div class="dash fi">'+
     '<div class="kpi-row">'+kpiHTML+'</div>'+
-    '<div class="card-sec"><div class="sec-h"><div><div class="sec-title">Staff Overview &mdash; '+esc(fmtDate(S.selDate))+'</div><div class="sec-sub" style="margin-top:1px">Click any card to review tasks</div></div><div class="live">Live</div></div>'+
+    '<div class="card-sec"><div class="sec-h"><div><div class="sec-title">Staff Overview &mdash; '+esc(dateRangeText)+'</div><div class="sec-sub" style="margin-top:1px">Click any card to review tasks</div></div></div>'+
       '<div class="thumb-grid" id="tg">'+thumbsHTML+'</div></div>'+
     '<div class="card-sec"><div class="sec-h"><div class="sec-title">Activity</div><div class="live">Live</div></div>'+(FEED.length?feedHTML:'<div style="font-size:11px;color:var(--t4)">No activity yet.</div>')+'</div>'+
   '</div>';
+
   var tg=el('tg');if(tg)tg.addEventListener('click',function(e){var c=e.target.closest('.sthumb');if(!c)return;var s=activeStaff()[parseInt(c.dataset.i)];if(s){S.selStaff=s.id;rOverview();}});
   // KPI card click handler
   var kpiCards=document.querySelectorAll('[data-kpi-filter]');kpiCards.forEach(function(card){card.addEventListener('click',function(){var filter=this.dataset.kpiFilter;S.boardFilter=filter;S.view='board';S.selStaff=null;renderContent();rLp();rTabBar();});});
+}
+
+// ── USER MANAGEMENT VIEW ─────────────────────────────────────────
+function rUserManagement(){
+  var users=STAFF.filter(function(s){return s.active;});
+
+  var html='<div class="dash">'+
+    '<div class="sec-h">'+
+      '<div><div class="sec-title">User Management</div><div class="sec-sub">Manage all users in the system</div></div>'+
+      '<div style="display:flex;align-items:center;gap:12px;margin-left:auto">'+
+        '<div class="search-box">'+
+          '<svg style="width:16px;height:16px;color:var(--t3);flex-shrink:0" fill="none" stroke="currentColor" viewBox="0 0 24 24">'+
+            '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>'+
+          '</svg>'+
+          '<input type="text" id="user-search" placeholder="Search users..." style="width:200px">'+
+        '</div>'+
+        '<button class="btn btn-pri" onclick="openUserManagementModal()" style="white-space:nowrap">'+
+          '<svg style="width:14px;height:14px;margin-right:4px" fill="none" stroke="currentColor" viewBox="0 0 24 24">'+
+            '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>'+
+          '</svg>'+
+          'Add User'+
+        '</button>'+
+      '</div>'+
+    '</div>'+
+    '<div class="staff-table-container">'+
+      '<table class="staff-table">'+
+        '<thead><tr>'+
+          '<th>Name</th>'+
+          '<th>Email</th>'+
+          '<th>Role</th>'+
+          '<th>Department</th>'+
+          '<th>Total Tasks</th>'+
+          '<th style="text-align:right">Actions</th>'+
+        '</tr></thead>'+
+        '<tbody id="user-tbody">';
+
+  if(users.length===0){
+    html+='<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--t3)">No users found.</td></tr>';
+  }else{
+    users.forEach(function(u){
+      var userTasks=TASKS.filter(function(t){return t.staffId===u.id;}).length;
+      var ini2=ini(u.name);
+      html+='<tr class="user-row" data-name="'+esc(u.name).toLowerCase()+'" data-email="'+esc(u.email||'').toLowerCase()+'" data-role="'+esc(u.role||'').toLowerCase()+'" data-dept="'+esc(u.department||u.inst||'').toLowerCase()+'">'+
+        '<td><div style="display:flex;align-items:center;gap:10px">'+
+          '<div class="ava ava-md" style="background:'+gbg(u.id)+';color:'+gc(u.id)+'">'+ini2+'</div>'+
+          '<div style="font-size:14px;font-weight:600;color:var(--text)">'+esc(u.name)+'</div>'+
+        '</div></td>'+
+        '<td><span style="font-size:13px;color:var(--t2)">'+esc(u.email||'—')+'</span></td>'+
+        '<td><span class="role-badge">'+esc(u.role||'—')+'</span></td>'+
+        '<td><span class="dept-badge">'+esc(u.department||u.inst||'—')+'</span></td>'+
+        '<td><span style="font-size:13px;font-weight:600;color:var(--p2)">'+userTasks+'</span> <span style="font-size:11px;color:var(--t3)">tasks</span></td>'+
+        '<td style="text-align:right">'+
+          '<div style="display:flex;gap:6px;justify-content:flex-end">'+
+            '<button class="btn btn-pri btn-sm" onclick="editUser('+u.id+')">'+
+              '<svg style="width:14px;height:14px;margin-right:3px" fill="none" stroke="currentColor" viewBox="0 0 24 24">'+
+                '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>'+
+              '</svg>'+
+              'Edit'+
+            '</button>'+
+            (u.id!=AUTH_USER.id?'<button class="btn btn-out btn-sm" onclick="deleteUser('+u.id+',\''+esc(u.name)+'\')" style="color:var(--red);border-color:var(--red)">'+
+              '<svg style="width:14px;height:14px;margin-right:3px" fill="none" stroke="currentColor" viewBox="0 0 24 24">'+
+                '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>'+
+              '</svg>'+
+              'Delete'+
+            '</button>':'')+
+          '</div>'+
+        '</td>'+
+      '</tr>';
+    });
+  }
+
+  html+='</tbody></table></div></div>';
+  el('ct').innerHTML=html;
+
+  // Search functionality
+  var searchInput=el('user-search');
+  if(searchInput){
+    searchInput.onkeydown=function(e){
+      if(e.key==='Enter'||e.keyCode===13){
+        var query=this.value.toLowerCase().trim();
+        var rows=document.querySelectorAll('.user-row');
+        rows.forEach(function(row){
+          var name=row.dataset.name||'';
+          var email=row.dataset.email||'';
+          var role=row.dataset.role||'';
+          var dept=row.dataset.dept||'';
+          var matches=!query||name.includes(query)||email.includes(query)||role.includes(query)||dept.includes(query);
+          row.style.display=matches?'':'none';
+        });
+      }
+    };
+  }
 }
 
 // ── BOARD VIEW ────────────────────────────────────────────────────
 function rBoard(){
   if(S.selStaff){el('ct').innerHTML='<div class="board-wrap fi">'+rStaffDetail(S.selStaff)+'</div>';bindDetailEvents();return;}
   var active=activeStaff();
-  // filter / search tasks
-  var allTs=TASKS.filter(function(t){var s=STAFF.find(function(x){return x.id===t.staffId;});return s&&s.active;});
-  if(S.boardSearch){var q=S.boardSearch.toLowerCase();allTs=allTs.filter(function(t){var s=STAFF.find(function(x){return x.id===t.staffId;});return t.desc.toLowerCase().includes(q)||(s&&s.name.toLowerCase().includes(q));});}
+
+  // Filter staff by search query (search by name, email, role, department)
+  var filteredStaff=active;
+  if(S.boardSearch){
+    var q=S.boardSearch.toLowerCase();
+    filteredStaff=active.filter(function(s){
+      return (s.name||'').toLowerCase().includes(q)||
+             (s.email||'').toLowerCase().includes(q)||
+             (s.role||'').toLowerCase().includes(q)||
+             (s.department||'').toLowerCase().includes(q)||
+             (s.inst||'').toLowerCase().includes(q);
+    });
+  }
+
+  // Filter tasks for the filtered staff
+  var allTs=TASKS.filter(function(t){
+    var s=filteredStaff.find(function(x){return x.id===t.staffId;});
+    return s&&s.active;
+  });
+
+  // Apply status filters to tasks
   if(S.boardFilter==='approved')allTs=allTs.filter(function(t){return t.action==='Approved';});
   else if(S.boardFilter==='rejected')allTs=allTs.filter(function(t){return t.action==='Rejected';});
   else if(S.boardFilter==='pending')allTs=allTs.filter(function(t){return !t.action;});
   else if(S.boardFilter==='today')allTs=allTs.filter(function(t){return t.date===S.selDate;});
+
+  // Filter staff to only show those with tasks matching the current filter
+  var staffWithFilteredTasks=filteredStaff.filter(function(s){
+    var staffTasks=allTs.filter(function(t){return t.staffId===s.id;});
+    return staffTasks.length>0;
+  });
+
   // group by staff
-  var groups=active.map(function(s,gi){
+  var groups=staffWithFilteredTasks.map(function(s,gi){
     var ts=allTs.filter(function(t){return t.staffId===s.id;});
     var ap=ts.filter(function(t){return t.action==='Approved';}).length;
     var rj=ts.filter(function(t){return t.action==='Rejected';}).length;
@@ -233,27 +403,34 @@ function rBoard(){
     if(!coll){
       ts.forEach(function(t){
         var rc=t.action==='Approved'?' ta':t.action==='Rejected'?' tr':'';
-        var isDp=S.boardDp===t.id;
-        var acBtn='<div class="dp-wrap">'+
-          '<button class="bdg '+(t.action==='Approved'?'bdg-ap':t.action==='Rejected'?'bdg-rj':'bdg-nr')+'" data-dpid="'+t.id+'">'+(t.action==='Approved'?'&#10004; Approved':t.action==='Rejected'?'&#10006; Rejected':'&#9675; Review')+' &#9662;</button>'+
-          (isDp?'<div class="dp-menu">'+
-            '<div class="dp-item g" data-act="ap" data-tid="'+t.id+'"><span class="dp-dot" style="background:var(--green)"></span>Approve</div>'+
-            '<div class="dp-item r" data-act="rj" data-tid="'+t.id+'"><span class="dp-dot" style="background:var(--red)"></span>Reject</div>'+
-            '<div class="dp-div"></div>'+
-            '<div class="dp-item" data-act="cl" data-tid="'+t.id+'"><span class="dp-dot" style="background:var(--t4)"></span>Clear</div>'+
-            '<div class="dp-item" data-act="rm" data-tid="'+t.id+'"><span class="dp-dot" style="background:var(--red)"></span>Remarks&hellip;</div>'+
-          '</div>':'')+
+        // Replace dropdown with always-visible inline buttons
+        var acBtn='<div style="display:flex;gap:4px;justify-content:center;flex-wrap:wrap">'+
+          '<button class="btn-icon btn-icon-grn" title="Approve" style="'+(t.action==='Approved'?'background:var(--green);color:#fff;':'')+'" data-act="ap" data-tid="'+t.id+'">'+
+            '<svg style="width:12px;height:12px" fill="none" stroke="currentColor" viewBox="0 0 24 24">'+
+              '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>'+
+            '</svg>'+
+          '</button>'+
+          '<button class="btn-icon btn-icon-red" title="Reject" style="'+(t.action==='Rejected'?'background:var(--red);color:#fff;':'')+'" data-act="rj" data-tid="'+t.id+'">'+
+            '<svg style="width:12px;height:12px" fill="none" stroke="currentColor" viewBox="0 0 24 24">'+
+              '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12"></path>'+
+            '</svg>'+
+          '</button>'+
+          (t.action?'<button class="btn-icon" title="Clear" style="background:var(--t4);color:#fff" data-act="cl" data-tid="'+t.id+'">'+
+            '<svg style="width:12px;height:12px" fill="none" stroke="currentColor" viewBox="0 0 24 24">'+
+              '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>'+
+            '</svg>'+
+          '</button>':'')+
         '</div>';
         var priColor=t.priority==='High'?'var(--red)':t.priority==='Medium'?'var(--amber)':'var(--green)';
+        var statusBadge=t.action==='Approved'?'<span class="bdg bdg-ap">Approved</span>':t.action==='Rejected'?'<span class="bdg bdg-rj">Rejected</span>':'<span class="bdg bdg-nr">Pending</span>';
         rowsHTML+='<tr class="btr'+rc+'" data-tid="'+t.id+'">'+
-          '<td><span class="bd-num">'+t.n+'</span></td>'+
+          '<td style="text-align:center!important"><span class="bd-num">'+t.n+'</span></td>'+
           '<td><div class="bd-desc" title="'+esc(t.desc)+'">'+esc(t.desc.length>55?t.desc.slice(0,55)+'...':t.desc)+'</div></td>'+
-          '<td><span class="bdg '+(t.status==='Done'?'bdg-g':'bdg-p')+'">'+(t.status==='Done'?'Done':'Pending')+'</span></td>'+
-          '<td>'+acBtn+'</td>'+
-          '<td><span style="font-size:10px;font-weight:600;color:'+priColor+'">'+esc(t.priority)+'</span></td>'+
-          '<td style="font-size:10px;color:var(--t3)">'+esc(fmtDate(t.date))+'</td>'+
-          '<td><div class="rem-cell'+(t.remarks?'':' rem-empty')+'" data-act="rm" data-tid="'+t.id+'">'+(t.remarks?esc(t.remarks.slice(0,30))+(t.remarks.length>30?'...':''):'Add remark...')+'</div></td>'+
-          '<td><button class="btn btn-out btn-xs edit-btn-row" data-act="rv" data-sid="'+s.id+'">Review</button></td>'+
+          '<td style="text-align:center!important">'+statusBadge+'</td>'+
+          '<td style="text-align:center!important">'+acBtn+'</td>'+
+          '<td style="text-align:center!important"><span style="font-size:10px;font-weight:600;color:'+priColor+'">'+esc(t.priority)+'</span></td>'+
+          '<td style="text-align:center!important;font-size:10px;color:var(--t3)">'+esc(fmtDate(t.date))+'</td>'+
+          '<td><div class="rem-cell'+(t.remarks?'':' rem-empty')+'" onclick="openRemarksEditor('+t.id+')" style="cursor:pointer" title="Click to edit remarks">'+(t.remarks?esc(t.remarks.slice(0,30))+(t.remarks.length>30?'...':''):'Add remarks...')+'</div></td>'+
         '</tr>';
       });
     }
@@ -261,27 +438,53 @@ function rBoard(){
       '<div class="bg-header" data-grp="'+s.id+'">'+
         '<div class="bg-stripe" style="background:'+stripe+'"></div>'+
         '<span class="bg-chev'+(coll?'':' open')+'">&rsaquo;</span>'+
-        '<div class="bg-title">'+esc(s.name)+' <span style="font-size:10px;font-weight:400;color:var(--t3)">'+esc(s.role)+'</span></div>'+
+        '<div class="bg-title">'+
+          '<div style="display:flex;flex-direction:column;gap:2px">'+
+            '<div>'+esc(s.name)+'</div>'+
+            '<div style="font-size:11px;font-weight:400;color:var(--t3)">'+esc(s.email||'—')+' <span style="color:var(--t4)">•</span> '+esc(s.role||'—')+'</div>'+
+          '</div>'+
+        '</div>'+
         '<span class="bg-count">'+ts.length+'</span>'+
         '<div class="bg-stats"><span style="color:var(--green)">&#10003; '+ap+'</span><span style="color:var(--red)">&#10007; '+rj+'</span><span style="color:var(--amber)">&#9675; '+pn+'</span></div>'+
+        '<button class="btn btn-out btn-xs" onclick="event.stopPropagation();viewStaffTasks(\''+s.id+'\')" style="margin-left:auto;margin-right:8px" title="View all tasks for this user">'+
+          '<svg style="width:12px;height:12px;margin-right:3px" fill="none" stroke="currentColor" viewBox="0 0 24 24">'+
+            '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>'+
+            '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>'+
+          '</svg>'+
+          'View All'+
+        '</button>'+
       '</div>'+
       (!coll?'<table class="board-tbl"><thead><tr>'+
-        ['#','Task','Status','Action','Priority','Date','Remarks',''].map(function(h){return '<th>'+h+'</th>';}).join('')+
+        '<th style="text-align:center!important">#</th>'+
+        '<th>Task</th>'+
+        '<th style="text-align:center!important">Status</th>'+
+        '<th style="text-align:center!important">Action</th>'+
+        '<th style="text-align:center!important">Priority</th>'+
+        '<th style="text-align:center!important">Date</th>'+
+        '<th>Remarks</th>'+
       '</tr></thead><tbody>'+rowsHTML+'</tbody></table>':'')+'</div>';
   }).join('');
   var filterPills=[['all','All'],['today','Today'],['approved','Approved'],['rejected','Rejected'],['pending','Pending']];
   el('ct').innerHTML='<div class="board-wrap fi">'+
     '<div class="board-toolbar">'+
-      '<div class="search-box"><span style="color:var(--t4)">&#9906;</span><input id="bd-srch" placeholder="Search tasks..." value="'+esc(S.boardSearch)+'"></div>'+
+      '<div class="search-box"><span style="color:var(--t4)">&#9906;</span><input id="bd-srch" placeholder="Search users... (press Enter)" value="'+esc(S.boardSearch)+'"></div>'+
       '<div class="board-divider"></div>'+
       filterPills.map(function(f){return '<button class="filter-pill'+(S.boardFilter===f[0]?' on':'')+'" data-filter="'+f[0]+'">'+f[1]+'</button>';}).join('')+
       '<div class="board-divider"></div>'+
       '<span style="font-size:11px;color:var(--t3);margin-left:auto">'+allTs.length+' tasks</span>'+
     '</div>'+
-    (groups||'<div style="text-align:center;padding:40px;color:var(--t4);font-size:13px">No tasks match the current filter.</div>')+
+    (staffWithFilteredTasks.length>0?groups:'<div style="text-align:center;padding:40px;color:var(--t4);font-size:13px">No tasks match the current filter.</div>')+
   '</div>';
-  // Bind search
-  var bdSrch=el('bd-srch');if(bdSrch)bdSrch.oninput=function(){S.boardSearch=this.value;rBoard();};
+  // Bind search - trigger only on Enter key press
+  var bdSrch=el('bd-srch');
+  if(bdSrch){
+    bdSrch.onkeydown=function(e){
+      if(e.key==='Enter'||e.keyCode===13){
+        S.boardSearch=this.value;
+        rBoard();
+      }
+    };
+  }
 }
 
 // ── TIMELINE VIEW ─────────────────────────────────────────────────
@@ -300,7 +503,7 @@ function rTimeline(){
       var pct=Math.round(ap/tot*100);
       var c=pct>=80?'#059669':pct>=40?'#B45309':'#DC2626';
       var w=Math.max(20,Math.round(ap/5*100));
-      return '<td class="tl-cell"><div class="tl-seg" style="background:'+c+';left:10%;width:'+w+'%;opacity:.85" title="'+tot+' tasks, '+ap+' approved">'+ap+'/'+tot+'</div></td>';
+      return '<td class="tl-cell"><div class="tl-seg" style="background:'+c+';left:35%;width:'+w+'%;opacity:.85;text-align:center" title="'+tot+' tasks, '+ap+' approved">'+ap+'/'+tot+'</div></td>';
     }).join('');
     var p=perf(s.id);var pc=p>=70?'var(--green)':p>=40?'var(--amber)':'var(--red)';
     return '<tr class="tl-tr">'+
@@ -366,7 +569,7 @@ function rAnalytics(){
   // Perf rows
   var perfHTML=active.map(function(s){
     var p=perf(s.id);var pc=p>=70?'var(--green)':p>=40?'var(--amber)':'var(--red)';
-    return '<div class="perf-row"><div class="perf-name">'+esc(s.name.split(' ')[0]+' '+s.name.split(' ')[1])+'</div>'+
+    return '<div class="perf-row"><div class="perf-name">'+esc(s.name)+'</div>'+
       '<div class="perf-bar-bg"><div class="perf-bar-fill" style="width:'+p+'%;background:'+pc+'"></div></div>'+
       '<div class="perf-pct" style="color:'+pc+'">'+p+'%</div>'+
     '</div>';
@@ -430,11 +633,6 @@ function rStaffDetail(sid){
                 '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>'+
               '</svg>'+
             '</button>':'')+
-            '<button class="btn-icon btn-icon-pri" title="Save Remarks" data-act="savrem" data-tid="'+t.id+'">'+
-              '<svg style="width:14px;height:14px" fill="none" stroke="currentColor" viewBox="0 0 24 24">'+
-                '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path>'+
-              '</svg>'+
-            '</button>'+
           '</div>'+
         '</div>'+
         '<div class="trow-meta">'+
@@ -449,6 +647,12 @@ function rStaffDetail(sid){
         '<div style="margin-top:8px">'+
           '<div style="font-size:10px;font-weight:600;color:var(--t3);margin-bottom:4px">Add/Edit Remarks:</div>'+
           '<textarea class="rem-ta" data-remid="'+t.id+'" placeholder="Remarks for '+esc(s.name.split(' ')[0])+'..." style="width:100%;min-height:60px;resize:vertical">'+esc(t.remarks||'')+'</textarea>'+
+          '<button class="btn btn-pri btn-sm" data-act="savrem" data-tid="'+t.id+'" style="margin-top:8px">'+
+            '<svg style="width:14px;height:14px;margin-right:4px" fill="none" stroke="currentColor" viewBox="0 0 24 24">'+
+              '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>'+
+            '</svg>'+
+            'Save Remarks'+
+          '</button>'+
         '</div>'+
       '</div>'+
     '</div>';
@@ -468,18 +672,19 @@ function bindDetailEvents(){
     var act=btn.dataset.act;var tid=parseInt(btn.dataset.tid);
     var t=TASKS.find(function(x){return x.id===tid;});if(!t)return;
     var s=STAFF.find(function(x){return x.id===t.staffId;});
+    var staffName=s?s.name:'Staff';
     if(act==='approve'){
       t.action='Approved';
-      toast(s.name+' Task '+t.n+' Approved','s');
-      addFeed(s.name.split(' ')[0]+' Task '+t.n+' Approved','green');
+      toast(staffName+' Task '+t.n+' Approved','s');
+      addFeed(staffName.split(' ')[0]+' Task '+t.n+' Approved','green');
       schedSave();
       renderContent();
       bindDetailEvents();
     }
     else if(act==='reject'){
       t.action='Rejected';
-      toast(s.name+' Task '+t.n+' Rejected','e');
-      addFeed(s.name.split(' ')[0]+' Task '+t.n+' Rejected','red');
+      toast(staffName+' Task '+t.n+' Rejected','e');
+      addFeed(staffName.split(' ')[0]+' Task '+t.n+' Rejected','red');
       schedSave();
       renderContent();
       bindDetailEvents();
@@ -817,7 +1022,7 @@ function setRole(r){S.role=r;S.selStaff=null;S.view='overview';render();toast('S
 // ── CONSOLIDATION BAR ────────────────────────────────────────────
 function rConsolBar(){
   var cbar=el('cbar');if(!cbar)return;
-  if(!AUTH_USER.isAdmin||S.view==='tasks'){cbar.style.display='none';return;}
+  if(!AUTH_USER.isAdmin||S.view==='tasks'||S.view==='users'){cbar.style.display='none';return;}
   cbar.style.display='flex';
   var active=activeStaff();
   var totalStaff=active.length;
@@ -946,7 +1151,8 @@ function rTaskManagementPage(){
     '<div class="staff-table-container">'+
       '<table class="staff-table">'+
         '<thead><tr>'+
-          '<th>Staff Member</th>'+
+          '<th>Name</th>'+
+          '<th>Email</th>'+
           '<th>Role</th>'+
           '<th>Department</th>'+
           '<th>Tasks in Range</th>'+
@@ -955,7 +1161,7 @@ function rTaskManagementPage(){
         '<tbody id="task-staff-tbody">';
 
   if(staffWithTasks.length===0){
-    html+='<tr><td colspan="5" style="text-align:center;padding:40px;color:var(--t3)">No tasks found in this date range. Use "Assign Task" to create new tasks.</td></tr>';
+    html+='<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--t3)">No tasks found in this date range. Use "Assign Task" to create new tasks.</td></tr>';
   }else{
     staffWithTasks.forEach(function(s){
       var dateRangeTasks=TASKS.filter(function(t){
@@ -965,9 +1171,9 @@ function rTaskManagementPage(){
       html+='<tr class="task-staff-row" data-name="'+esc(s.name).toLowerCase()+'" data-role="'+esc(s.role||'').toLowerCase()+'" data-dept="'+esc(s.department||s.inst||'').toLowerCase()+'">'+
         '<td><div style="display:flex;align-items:center;gap:10px">'+
           '<div class="ava ava-md" style="background:'+gbg(s.id)+';color:'+gc(s.id)+'">'+ini2+'</div>'+
-          '<div><div style="font-size:13px;font-weight:600;color:var(--text)">'+esc(s.name)+'</div>'+
-            '<div style="font-size:11px;color:var(--t3)">'+(s.email||'—')+'</div></div>'+
+          '<div style="font-size:14px;font-weight:600;color:var(--text)">'+esc(s.name)+'</div>'+
         '</div></td>'+
+        '<td><span style="font-size:13px;color:var(--t2)">'+esc(s.email||'—')+'</span></td>'+
         '<td><span class="role-badge">'+esc(s.role||'—')+'</span></td>'+
         '<td><span class="dept-badge">'+esc(s.department||s.inst||'—')+'</span></td>'+
         '<td><span style="font-size:13px;font-weight:600;color:var(--p2)">'+dateRangeTasks.length+'</span> <span style="font-size:11px;color:var(--t3)">tasks</span></td>'+
@@ -1049,7 +1255,7 @@ function showMyTasks(){
   }
 
   var allMyTasks=TASKS.filter(function(t){
-    return t.staffId===AUTH_USER.id;
+    return t.staffId==AUTH_USER.id; // Use == to handle string/number type differences
   });
 
   // Apply filters
@@ -1300,8 +1506,15 @@ function markTaskDone(taskId){
 
 // Delete task (Admin only)
 function deleteTask(taskId,staffName){
-  var task=TASKS.find(function(t){return t.id===taskId;});
-  if(!task)return;
+  console.log('deleteTask called with taskId:',taskId,'Type:',typeof taskId);
+
+  var task=TASKS.find(function(t){return t.id==taskId;});
+
+  if(!task){
+    console.error('Task not found for deletion. ID:',taskId);
+    toast('Task not found','e');
+    return;
+  }
 
   // Show custom confirmation modal
   showConfirmDialog(
@@ -1309,7 +1522,7 @@ function deleteTask(taskId,staffName){
     'Are you sure you want to delete this task: "'+esc(task.desc)+'"? This action cannot be undone.',
     function(){
       // On confirm - remove task from TASKS array
-      var taskIndex=TASKS.findIndex(function(t){return t.id===taskId;});
+      var taskIndex=TASKS.findIndex(function(t){return t.id==taskId;});
       if(taskIndex>-1){
         TASKS.splice(taskIndex,1);
         toast('Task deleted successfully!','s');
@@ -1377,11 +1590,25 @@ function toggleMyTaskDate(date){
 }
 
 function viewStaffTasks(id){
-  var s=STAFF.find(function(x){return x.id===id;});if(!s)return;
+  console.log('viewStaffTasks called with id:',id,'Type:',typeof id);
+
+  // Use == instead of === to handle string/number type differences
+  var s=STAFF.find(function(x){return x.id==id;});
+
+  if(!s){
+    console.error('Staff not found. ID:',id,'Type:',typeof id,'STAFF:',STAFF);
+    toast('User not found. Please refresh the page.','e');
+    return;
+  }
+
+  console.log('Found staff:',s.name,'Tasks in range from',S.taskFromDate,'to',S.taskToDate);
+
   // Filter tasks by staff and date range
   var allTasks=TASKS.filter(function(t){
-    return t.staffId===s.id&&t.date>=S.taskFromDate&&t.date<=S.taskToDate;
+    return t.staffId==s.id&&t.date>=S.taskFromDate&&t.date<=S.taskToDate;
   });
+
+  console.log('Filtered tasks:',allTasks.length);
 
   // Group tasks by date
   var tasksByDate={};
@@ -1473,19 +1700,69 @@ function viewStaffTasks(id){
       '</div>'+
       tasksHTML+
     '</div>'+
+  '</div>');
+
+  el('m-x').onclick=closeOv;
+}
+
+function openRemarksEditor(taskId){
+  console.log('Opening remarks editor for task:',taskId);
+
+  var task=TASKS.find(function(t){return t.id==taskId;});
+  if(!task){
+    console.error('Task not found:',taskId);
+    toast('Task not found','e');
+    return;
+  }
+
+  var remarksText=task.remarks||'';
+  var taskDesc=task.desc.length>50?task.desc.slice(0,50)+'...':task.desc;
+
+  showOv('<div class="modal" onclick="event.stopPropagation()" style="max-width:500px">'+
+    '<div class="m-head">'+
+      '<div style="flex:1">'+
+        '<div style="font-size:16px;font-weight:700;color:var(--t1)">Edit Remarks</div>'+
+        '<div style="font-size:12px;color:var(--t3);margin-top:2px">'+esc(taskDesc)+'</div>'+
+      '</div>'+
+      '<button class="btn btn-out btn-sm" id="rem-x" style="padding:4px 8px">&#10005;</button>'+
+    '</div>'+
+    '<div class="m-body">'+
+      '<div style="margin-bottom:8px">'+
+        '<label style="display:block;font-size:13px;color:var(--t2);font-weight:600;margin-bottom:6px">Admin Remarks</label>'+
+        '<textarea id="rem-textarea" placeholder="Add remarks for this task..." style="width:100%;min-height:120px;padding:10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;color:var(--text);background:var(--bg2);resize:vertical;font-family:inherit;line-height:1.5">'+esc(remarksText)+'</textarea>'+
+      '</div>'+
+    '</div>'+
     '<div class="m-foot">'+
-      '<button class="btn btn-out btn-sm" id="vt-cl">Close</button>'+
-      '<button class="btn btn-pri btn-sm" onclick="closeOv();openAssignTask(\''+id+'\')">'+
-        '<svg style="width:14px;height:14px;margin-right:3px" fill="none" stroke="currentColor" viewBox="0 0 24 24">'+
-          '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>'+
+      '<button class="btn btn-out btn-sm" id="rem-cancel">Cancel</button>'+
+      '<button class="btn btn-pri btn-sm" id="rem-save">'+
+        '<svg style="width:14px;height:14px;margin-right:4px" fill="none" stroke="currentColor" viewBox="0 0 24 24">'+
+          '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>'+
         '</svg>'+
-        'Assign New Task'+
+        'Save Remarks'+
       '</button>'+
     '</div>'+
   '</div>');
 
-  el('m-x').onclick=closeOv;
-  el('vt-cl').onclick=closeOv;
+  el('rem-x').onclick=closeOv;
+  el('rem-cancel').onclick=closeOv;
+  el('rem-save').onclick=function(){
+    var newRemarks=el('rem-textarea').value.trim();
+    task.remarks=newRemarks;
+    console.log('Saved remarks for task',taskId,':',newRemarks);
+    toast('Remarks saved successfully','s');
+    schedSave();
+    closeOv();
+    renderContent();
+  };
+
+  // Focus textarea
+  setTimeout(function(){
+    var textarea=el('rem-textarea');
+    if(textarea){
+      textarea.focus();
+      textarea.setSelectionRange(textarea.value.length,textarea.value.length);
+    }
+  },100);
 }
 
 function openAssignTask(id){
@@ -1576,46 +1853,55 @@ function openAssignTask(id){
   el('m-x').onclick=closeOv;
   el('at-cl').onclick=closeOv;
   el('at-sv').onclick=function(){
-    var tasksAdded=0;
-    var tasksByDate={};
+    try{
+      var tasksAdded=0;
+      var tasksByDate={};
 
-    // Loop through all 5 task inputs
-    for(var i=1;i<=5;i++){
-      var desc=(el('at-desc-'+i)||{}).value||'';
-      if(!desc.trim())continue; // Skip empty tasks
+      // Loop through all 5 task inputs
+      for(var i=1;i<=5;i++){
+        var desc=(el('at-desc-'+i)||{}).value||'';
+        if(!desc.trim())continue; // Skip empty tasks
 
-      var date=(el('at-date-'+i)||{}).value||S.selDate;
-      var pri=(el('at-pri-'+i)||{}).value||'Medium';
+        var date=(el('at-date-'+i)||{}).value||S.selDate;
+        var pri=(el('at-pri-'+i)||{}).value||'Medium';
 
-      // Track tasks per date to calculate correct task numbers
-      if(!tasksByDate[date]){
-        tasksByDate[date]=tasksFor(s.id,date).length;
+        // Track tasks per date to calculate correct task numbers
+        if(!tasksByDate[date]){
+          tasksByDate[date]=tasksFor(s.id,date).length;
+        }
+        tasksByDate[date]++;
+
+        var newTask={
+          id:++TID,
+          staffId:s.id,
+          date:date,
+          n:tasksByDate[date],
+          desc:desc.trim(),
+          status:'Pending',
+          action:'',
+          remarks:'',
+          staffRem:'',
+          adminRem:'',
+          priority:pri
+        };
+
+        console.log('Adding task:',newTask);
+        TASKS.push(newTask);
+        tasksAdded++;
       }
-      tasksByDate[date]++;
 
-      TASKS.push({
-        id:++TID,
-        staffId:s.id,
-        date:date,
-        n:tasksByDate[date],
-        desc:desc.trim(),
-        status:'Pending',
-        action:'',
-        remarks:'',
-        staffRem:'',
-        adminRem:'',
-        priority:pri
-      });
-      tasksAdded++;
+      if(tasksAdded===0){toast('Please enter at least one task description','w');return;}
+
+      console.log('Total tasks added:',tasksAdded,'Total TASKS:',TASKS.length);
+      toast(tasksAdded+' task'+(tasksAdded>1?'s':'')+' assigned to '+esc(s.name),'s');
+      addFeed(tasksAdded+' task'+(tasksAdded>1?'s':'')+' assigned to '+s.name,'blue');
+      schedSave();
+      closeOv();
+      render();
+    }catch(e){
+      console.error('Error adding tasks:',e);
+      toast('Failed to add tasks. Please try again.','e');
     }
-
-    if(tasksAdded===0){toast('Please enter at least one task description','w');return;}
-
-    toast(tasksAdded+' task'+(tasksAdded>1?'s':'')+' assigned to '+esc(s.name),'s');
-    addFeed(tasksAdded+' task'+(tasksAdded>1?'s':'')+' assigned to '+s.name,'blue');
-    schedSave();
-    closeOv();
-    render();
   };
 }
 
@@ -1624,6 +1910,7 @@ function openAssignTask(id){
 function renderContent(){
   if(AUTH_USER.isAdmin){
     if(S.view==='tasks')rTaskManagementPage();
+    else if(S.view==='users')rUserManagement();
     else if(S.view==='board')rBoard();
     else if(S.view==='timeline')rTimeline();
     else if(S.view==='analytics')rAnalytics();
@@ -1646,30 +1933,72 @@ function autoSave(){
   var ind=el('save-ind');
   if(ind)ind.style.opacity='1';
 
-  // Save tasks data to GitHub
+  console.log('Saving tasks to database. Total tasks:',TASKS.length);
+  console.log('First task sample:',TASKS[0]);
+
+  // Save tasks data to database
   fetch('/api/tasks/save',{
     method:'POST',
     credentials:'same-origin',
     headers:{'Content-Type':'application/json','X-CSRF-TOKEN':document.querySelector('meta[name="csrf-token"]')?.content||''},
     body:JSON.stringify({tasks:TASKS})
-  }).then(function(r){return r.json();}).then(function(data){
-    if(!data.success){console.error('Tasks save failed:',data.message);}
+  }).then(function(r){
+    console.log('Save response status:',r.status);
+    return r.json();
+  }).then(function(data){
+    console.log('Save response data:',data);
+    if(!data.success){
+      console.error('Tasks save failed:',data.message,data);
+      toast('Failed to save tasks: '+(data.message||'Unknown error'),'e');
+    }else{
+      console.log('Tasks saved successfully');
+      // Reload tasks from database to sync IDs
+      reloadTasksFromDB();
+    }
     _isSaving=false;
     if(ind){clearTimeout(ind._t);ind._t=setTimeout(function(){ind.style.opacity='0';},1800);}
   }).catch(function(e){
     console.error('Tasks save error:',e);
+    toast('Error saving tasks. Please try again.','e');
     _isSaving=false;
     if(ind)ind.style.opacity='0';
   });
 
-  // Also save to localStorage as backup
-  try{
-    var snap={STAFF:STAFF,TASKS:TASKS,FEED:FEED,TID:TID,DIR:DIR,S:{role:S.role,staffId:S.staffId,selDate:S.selDate,view:S.view}};
-    localStorage.setItem('wmp_data_backup',JSON.stringify(snap));
-  }catch(e){}
+  // localStorage backup removed - all data now stored in database
 }
 
 function schedSave(){clearTimeout(_saveTimer);_saveTimer=setTimeout(autoSave,800);}
+
+function reloadTasksFromDB(){
+  console.log('Reloading tasks from database...');
+  fetch('/api/tasks',{
+    method:'GET',
+    credentials:'same-origin',
+    headers:{'Content-Type':'application/json'}
+  }).then(function(r){
+    if(!r.ok){
+      console.warn('Tasks reload returned status:',r.status);
+      return null;
+    }
+    return r.json();
+  }).then(function(response){
+    if(response&&response.success&&response.data){
+      TASKS.length=0;
+      response.data.forEach(function(t){TASKS.push(t);});
+
+      // Update TID to be max task ID + 1
+      var maxId=Math.max.apply(null,TASKS.map(function(t){return t.id||0;}));
+      if(maxId>TID){
+        TID=maxId;
+      }
+
+      console.log('Tasks reloaded. Total:',TASKS.length,'Max ID:',maxId);
+      render();
+    }
+  }).catch(function(e){
+    console.error('Tasks reload error:',e);
+  });
+}
 
 function restoreData(){
   var restored=false;
@@ -1728,7 +2057,7 @@ function restoreData(){
     }
   }).catch(function(e){console.error('User load error:',e);});
 
-  // Load tasks data from GitHub
+  // Load tasks data from database
   fetch('/api/tasks',{
     method:'GET',
     credentials:'same-origin',
@@ -1747,29 +2076,17 @@ function restoreData(){
     if(response&&response.success&&response.data&&response.data.length){
       TASKS.length=0;
       response.data.forEach(function(t){TASKS.push(t);});
+
+      // Update TID to be max task ID + 1 to avoid conflicts
+      var maxId=Math.max.apply(null,TASKS.map(function(t){return t.id||0;}));
+      if(maxId>TID){
+        TID=maxId;
+      }
+
       restored=true;
       render();
     }
   }).catch(function(e){console.error('Tasks load error:',e);});
-
-  // Try localStorage backup if GitHub fails
-  if(!restored){
-    try{
-      var raw=localStorage.getItem('wmp_data_backup');
-      if(raw){
-        var snap=JSON.parse(raw);
-        if(snap.STAFF&&snap.STAFF.length){
-          STAFF.length=0;snap.STAFF.forEach(function(s){STAFF.push(s);});
-          TASKS.length=0;snap.TASKS.forEach(function(t){TASKS.push(t);});
-          FEED.length=0;snap.FEED.forEach(function(f){FEED.push(f);});
-          TID=snap.TID||TID;
-          if(snap.DIR){DIR.name=snap.DIR.name||DIR.name;DIR.desig=snap.DIR.desig||DIR.desig;}
-          if(snap.S){S.role=snap.S.role||S.role;S.staffId=snap.S.staffId||S.staffId;S.selDate=snap.S.selDate||S.selDate;}
-          restored=true;
-        }
-      }
-    }catch(e){}
-  }
 
   return restored;
 }
@@ -1854,16 +2171,33 @@ document.addEventListener('click',function(e){
 
   // filter pills
   var pill=e.target.closest('[data-filter]');if(pill){S.boardFilter=pill.dataset.filter;rBoard();return;}
-  // action dropdown toggle
-  var dpBtn=e.target.closest('[data-dpid]');if(dpBtn){S.boardDp=S.boardDp===parseInt(dpBtn.dataset.dpid)?null:parseInt(dpBtn.dataset.dpid);rBoard();return;}
-  // dropdown actions
+  // action buttons (removed dropdown toggle - now using always-visible buttons)
   var dpAct=e.target.closest('[data-act][data-tid]');if(dpAct){
     var act=dpAct.dataset.act;var tid=parseInt(dpAct.dataset.tid);
     var t=TASKS.find(function(x){return x.id===tid;});if(!t)return;
     var s=STAFF.find(function(x){return x.id===t.staffId;});
-    if(act==='ap'){t.action='Approved';toast(s.name+' Task '+t.n+' Approved','s');addFeed(s.name.split(' ')[0]+' Task '+t.n+' Approved','green');S.boardDp=null;rBoard();autoSave();}
-    else if(act==='rj'){t.action='Rejected';toast(s.name+' Task '+t.n+' Rejected','e');addFeed(s.name.split(' ')[0]+' Task '+t.n+' Rejected','red');S.boardDp=null;rBoard();autoSave();}
-    else if(act==='cl'){t.action='';S.boardDp=null;rBoard();toast('Cleared','i');autoSave();}
+    var staffName=s?s.name:'Staff';
+    if(act==='ap'){
+      t.action='Approved';
+      toast(staffName+' Task '+t.n+' Approved','s');
+      addFeed(staffName.split(' ')[0]+' Task '+t.n+' Approved','green');
+      S.boardDp=null;
+      // Clear filter to show the approved task
+      if(S.boardFilter==='pending'){S.boardFilter='all';}
+      renderContent();
+      autoSave();
+    }
+    else if(act==='rj'){
+      t.action='Rejected';
+      toast(staffName+' Task '+t.n+' Rejected','e');
+      addFeed(staffName.split(' ')[0]+' Task '+t.n+' Rejected','red');
+      S.boardDp=null;
+      // Clear filter to show the rejected task
+      if(S.boardFilter==='pending'){S.boardFilter='all';}
+      renderContent();
+      autoSave();
+    }
+    else if(act==='cl'){t.action='';S.boardDp=null;renderContent();toast('Cleared','i');autoSave();}
     else if(act==='rm'||act==='rv'){
       var sv=e.target.closest('[data-sid]');
       if(sv){S.selStaff=sv.dataset.sid;}else{S.selStaff=t.staffId;}
@@ -2243,6 +2577,9 @@ function performDeleteUser(userId, userName) {
 }
 
 function editUser(userId) {
+  // First, open the modal
+  openUserManagementModal();
+
   // Get CSRF token
   var csrfToken = document.querySelector('meta[name="csrf-token"]');
   var token = csrfToken ? csrfToken.getAttribute('content') : '';
@@ -2263,31 +2600,35 @@ function editUser(userId) {
     if (result.success && result.users) {
       var user = result.users.find(function(u) { return u.id === userId; });
       if (user) {
-        // Populate form with user data
-        document.getElementById('editUserId').value = user.id;
-        document.getElementById('userName').value = user.name;
-        document.getElementById('userEmail').value = user.email;
-        document.getElementById('userDepartment').value = user.department || '';
-        document.getElementById('userPassword').value = '';
-        document.getElementById('userPassword').required = false;
-        document.getElementById('passwordOptional').style.display = 'inline';
-        document.getElementById('submitUserBtnText').textContent = 'Update User';
+        // Wait a bit for modal to be fully rendered
+        setTimeout(function() {
+          // Populate form with user data
+          document.getElementById('editUserId').value = user.id;
+          document.getElementById('userName').value = user.name;
+          document.getElementById('userEmail').value = user.email;
+          document.getElementById('userDepartment').value = user.department || '';
+          document.getElementById('userPassword').value = '';
+          document.getElementById('userPassword').required = false;
+          document.getElementById('passwordOptional').style.display = 'inline';
+          document.getElementById('submitUserBtnText').textContent = 'Update User';
 
-        // Handle role - check if it's a predefined role or custom
-        var roleSelect = document.getElementById('userRole');
-        var predefinedRoles = ['Developer', 'Designer', 'Manager', 'Analyst', 'Tester', 'Engineer', 'Architect', 'Administrator'];
+          // Handle role - check if it's a predefined role or custom
+          var roleSelect = document.getElementById('userRole');
+          var predefinedRoles = ['Developer', 'Designer', 'Manager', 'Analyst', 'Tester', 'Engineer', 'Architect', 'Administrator'];
 
-        if (predefinedRoles.indexOf(user.role) !== -1) {
-          roleSelect.value = user.role;
-        } else {
-          // Custom role
-          roleSelect.value = 'Other';
-          document.getElementById('userRoleCustom').value = user.role;
-          document.getElementById('userRoleCustomWrapper').style.display = 'block';
-        }
+          if (predefinedRoles.indexOf(user.role) !== -1) {
+            roleSelect.value = user.role;
+          } else {
+            // Custom role
+            roleSelect.value = 'Other';
+            document.getElementById('userRoleCustom').value = user.role;
+            document.getElementById('userRoleCustomWrapper').style.display = 'block';
+          }
 
-        // Scroll to top of form
-        document.querySelector('.md-body').scrollTop = 0;
+          // Scroll to top of form
+          var mdBody = document.querySelector('.md-body');
+          if (mdBody) mdBody.scrollTop = 0;
+        }, 100);
       }
     }
   })
@@ -2389,115 +2730,76 @@ function handleBulkUpload(event) {
   var file = event.target.files[0];
   if (!file) return;
 
+  // Validate file type
+  var fileExtension = file.name.split('.').pop().toLowerCase();
+  if (fileExtension !== 'xlsx' && fileExtension !== 'xls') {
+    toast('Please upload a valid Excel file (.xlsx or .xls)', 'e');
+    event.target.value = '';
+    return;
+  }
+
   // Show progress indicator
   var progress = document.getElementById('bulkUploadProgress');
   if (progress) progress.style.display = 'block';
 
-  var reader = new FileReader();
-  reader.onload = function(e) {
-    try {
-      var data = new Uint8Array(e.target.result);
-      var workbook = XLSX.read(data, { type: 'array' });
+  // Create FormData to send file
+  var formData = new FormData();
+  formData.append('excel_file', file);
 
-      // Get first sheet
-      var firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-      var jsonData = XLSX.utils.sheet_to_json(firstSheet);
+  // Get CSRF token
+  var csrfToken = document.querySelector('meta[name="csrf-token"]');
+  var token = csrfToken ? csrfToken.getAttribute('content') : '';
 
-      if (jsonData.length === 0) {
-        toast('The Excel file is empty or invalid', 'e');
-        if (progress) progress.style.display = 'none';
-        return;
+  // Send file to backend for server-side processing
+  fetch('/admin/users/import-excel', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: {
+      'X-CSRF-TOKEN': token,
+      'Accept': 'application/json'
+    },
+    body: formData
+  })
+  .then(function(response) {
+    return response.json();
+  })
+  .then(function(result) {
+    if (progress) progress.style.display = 'none';
+
+    if (result.success) {
+      var message = 'Successfully imported ' + result.count + ' user(s)!';
+
+      if (result.skipped && result.skipped.length > 0) {
+        message += ' (Skipped ' + result.skipped.length + ' duplicate email(s))';
       }
 
-      // Validate and prepare users data
-      var users = [];
-      var errors = [];
-
-      jsonData.forEach(function(row, index) {
-        var rowNum = index + 2; // +2 because Excel rows start at 1 and we have a header row
-
-        // Validate required fields
-        if (!row.Name || !row.Email) {
-          errors.push('Row ' + rowNum + ': Name and Email are required');
-          return;
-        }
-
-        // Basic email validation
-        var emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(row.Email)) {
-          errors.push('Row ' + rowNum + ': Invalid email format');
-          return;
-        }
-
-        users.push({
-          name: row.Name,
-          email: row.Email,
-          role: row.Role || '',
-          department: row.Department || ''
-          // Password is always set to 12345678 by backend
-        });
-      });
-
-      if (errors.length > 0) {
-        toast('Validation errors: ' + errors.join(', '), 'e');
-        if (progress) progress.style.display = 'none';
-        return;
+      if (result.invalid_rows && result.invalid_rows.length > 0) {
+        message += ' (Found ' + result.invalid_rows.length + ' invalid row(s))';
       }
 
-      if (users.length === 0) {
-        toast('No valid users found in the file', 'e');
-        if (progress) progress.style.display = 'none';
-        return;
+      toast(message, 's');
+
+      // Reset file input
+      event.target.value = '';
+
+      // Reload users list
+      loadUsers();
+
+      // Refresh main view if needed
+      if (typeof renderContent === 'function' && S.view === 'tasks') {
+        setTimeout(renderContent, 300);
       }
-
-      // Send to backend
-      var csrfToken = document.querySelector('meta[name="csrf-token"]');
-      var token = csrfToken ? csrfToken.getAttribute('content') : '';
-
-      fetch('/admin/users/bulk-import', {
-        method: 'POST',
-        credentials: 'same-origin',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRF-TOKEN': token,
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify({ users: users })
-      })
-      .then(function(response) {
-        return response.json();
-      })
-      .then(function(result) {
-        if (progress) progress.style.display = 'none';
-
-        if (result.success) {
-          toast('Successfully imported ' + result.count + ' user(s)!', 's');
-          // Reset file input
-          event.target.value = '';
-          // Reload users list
-          loadUsers();
-          // Refresh main view if needed
-          if (typeof renderContent === 'function' && S.view === 'tasks') {
-            setTimeout(renderContent, 300);
-          }
-        } else {
-          toast(result.message || 'Failed to import users', 'e');
-        }
-      })
-      .catch(function(error) {
-        console.error('Error:', error);
-        if (progress) progress.style.display = 'none';
-        toast('An error occurred during import. Please try again.', 'e');
-      });
-
-    } catch (error) {
-      console.error('Error parsing Excel:', error);
-      toast('Failed to parse Excel file. Please check the format.', 'e');
-      if (progress) progress.style.display = 'none';
+    } else {
+      toast(result.message || 'Failed to import users', 'e');
+      event.target.value = '';
     }
-  };
-
-  reader.readAsArrayBuffer(file);
+  })
+  .catch(function(error) {
+    console.error('Error:', error);
+    if (progress) progress.style.display = 'none';
+    toast('An error occurred during import. Please try again.', 'e');
+    event.target.value = '';
+  });
 }
 
 // Close modals when clicking outside

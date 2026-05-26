@@ -2,39 +2,50 @@
 
 namespace App\Http\Controllers;
 
-use App\Services\GitHubStorageService;
+use App\Models\Task;
+use App\Models\ActivityFeed;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\DB;
 
 class TaskDataController extends Controller
 {
-    protected $github;
-    protected $filename = 'tasks.json';
-
-    public function __construct(GitHubStorageService $github)
-    {
-        $this->github = $github;
-    }
-
     /**
      * Get all tasks data
      */
     public function index()
     {
         try {
-            $data = $this->github->readFile($this->filename);
+            $tasks = Task::with('user:id,name,email,role,department')
+                ->orderBy('task_date', 'desc')
+                ->orderBy('task_number', 'asc')
+                ->get()
+                ->map(function ($task) {
+                    return [
+                        'id' => $task->id,
+                        'staffId' => $task->user_id,
+                        'n' => $task->task_number,
+                        'desc' => $task->description,
+                        'date' => $task->task_date->format('Y-m-d'),
+                        'status' => $task->status,
+                        'action' => $task->action,
+                        'priority' => $task->priority,
+                        'remarks' => $task->remarks,
+                        'adminRem' => $task->admin_remarks,
+                        'staffRem' => $task->staff_remarks,
+                    ];
+                });
 
             return response()->json([
                 'success' => true,
-                'data' => $data['tasks'] ?? [],
+                'data' => $tasks,
             ]);
         } catch (\Exception $e) {
-            // Return empty array if file doesn't exist or error occurs
             return response()->json([
-                'success' => true,
+                'success' => false,
+                'message' => 'Failed to fetch tasks: ' . $e->getMessage(),
                 'data' => [],
-                'message' => 'No tasks found or file does not exist yet'
-            ]);
+            ], 500);
         }
     }
 
@@ -55,15 +66,142 @@ class TaskDataController extends Controller
             ], 422);
         }
 
-        $result = $this->github->writeFile(
-            $this->filename,
-            ['tasks' => $request->tasks],
-            'Update tasks data'
-        );
+        try {
+            DB::beginTransaction();
 
-        return response()->json([
-            'success' => $result,
-            'message' => $result ? 'Tasks data saved successfully' : 'Failed to save tasks data',
-        ], $result ? 200 : 500);
+            // Get all task IDs from the request
+            $taskIds = collect($request->tasks)->pluck('id')->filter();
+
+            // Delete tasks that are not in the request (they were deleted in the frontend)
+            if ($taskIds->isNotEmpty()) {
+                Task::whereNotIn('id', $taskIds)->delete();
+            }
+
+            // Upsert all tasks
+            foreach ($request->tasks as $taskData) {
+                $data = [
+                    'user_id' => $taskData['staffId'],
+                    'task_number' => $taskData['n'],
+                    'description' => $taskData['desc'],
+                    'task_date' => $taskData['date'],
+                    'status' => $taskData['status'] ?? 'Pending',
+                    'action' => $taskData['action'] ?? null,
+                    'priority' => $taskData['priority'] ?? null,
+                    'remarks' => $taskData['remarks'] ?? null,
+                    'admin_remarks' => $taskData['adminRem'] ?? null,
+                    'staff_remarks' => $taskData['staffRem'] ?? null,
+                ];
+
+                if (isset($taskData['id'])) {
+                    // Check if task exists in database
+                    $existingTask = Task::find($taskData['id']);
+
+                    if ($existingTask) {
+                        // Update existing task
+                        $existingTask->update($data);
+                    } else {
+                        // Task has client-side ID but doesn't exist in DB, create new
+                        Task::create($data);
+                    }
+                } else {
+                    // Create new task
+                    Task::create($data);
+                }
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Tasks saved successfully',
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to save tasks: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Get activity feed
+     */
+    public function getActivityFeed()
+    {
+        try {
+            $feed = ActivityFeed::orderBy('created_at', 'desc')
+                ->limit(50)
+                ->get()
+                ->map(function ($item) {
+                    return [
+                        'id' => $item->id,
+                        'msg' => $item->message,
+                        'col' => $item->color,
+                        'time' => $item->activity_time->format('H:i'),
+                    ];
+                });
+
+            return response()->json([
+                'success' => true,
+                'data' => $feed,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to fetch activity feed',
+                'data' => [],
+            ], 500);
+        }
+    }
+
+    /**
+     * Add activity feed item
+     */
+    public function addActivityFeed(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'message' => 'required|string',
+            'color' => 'required|string',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+            ], 422);
+        }
+
+        try {
+            $feed = ActivityFeed::create([
+                'message' => $request->message,
+                'color' => $request->color,
+                'activity_time' => now(),
+            ]);
+
+            // Keep only last 50 items
+            $count = ActivityFeed::count();
+            if ($count > 50) {
+                ActivityFeed::orderBy('created_at', 'asc')
+                    ->limit($count - 50)
+                    ->delete();
+            }
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'id' => $feed->id,
+                    'msg' => $feed->message,
+                    'col' => $feed->color,
+                    'time' => $feed->activity_time->format('H:i'),
+                ],
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to add activity feed',
+            ], 500);
+        }
     }
 }

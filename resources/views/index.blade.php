@@ -136,7 +136,7 @@
           Choose Excel File to Upload
         </button>
         <div style="margin-top:10px;padding:12px;background:#fef3c7;border-radius:6px;font-size:12px;color:#92400e">
-          <strong>Required:</strong> Name, Email &nbsp;|&nbsp; <strong>Optional:</strong> Role, Department &nbsp;|&nbsp; <strong>Password:</strong> All users will get "12345678"
+          <strong>Required:</strong> Name, Email &nbsp;|&nbsp; <strong>Optional:</strong> Password, Role, Department &nbsp;|&nbsp; <strong>Default Password:</strong> "12345678" (if not provided)
         </div>
         <div id="bulkUploadProgress" style="display:none;margin-top:10px;padding:12px;background:#dbeafe;border-radius:6px;font-size:12px;color:#1e40af">
           Processing... Please wait.
