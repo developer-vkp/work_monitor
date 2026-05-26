@@ -202,12 +202,36 @@
         </button>
       </form>
 
-      <!-- Users List -->
-      <div style="margin-top:24px;border-top:1px solid #e5e7eb;padding-top:20px">
-        <div style="font-size:14px;font-weight:600;color:#1f2937;margin-bottom:12px">Existing Users</div>
-        <div id="usersList" style="display:grid;gap:10px">
-          <!-- Users will be loaded here dynamically -->
-          <div style="text-align:center;padding:20px;color:#6b7280;font-size:13px">Loading users...</div>
+      <!-- User Profile Display (for non-admin users) -->
+      <div id="userProfileDisplay" style="display:none;margin-top:20px">
+        <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:20px">
+          <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px">
+            <div style="width:60px;height:60px;background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);color:#fff;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:600;border-radius:50%;flex-shrink:0">
+              {{ strtoupper(substr(Auth::user()->name ?? Auth::user()->email, 0, 2)) }}
+            </div>
+            <div style="flex:1">
+              <div style="font-size:18px;font-weight:600;color:#1f2937;margin-bottom:4px">{{ Auth::user()->name }}</div>
+              <div style="font-size:13px;color:#6b7280">{{ Auth::user()->email }}</div>
+            </div>
+          </div>
+
+          <div style="display:grid;gap:12px;margin-bottom:16px">
+            <div style="display:flex;justify-content:space-between;padding:10px;background:#fff;border-radius:6px">
+              <span style="font-size:13px;font-weight:600;color:#6b7280">Role:</span>
+              <span style="font-size:13px;color:#1f2937">{{ Auth::user()->role ?? 'User' }}</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;padding:10px;background:#fff;border-radius:6px">
+              <span style="font-size:13px;font-weight:600;color:#6b7280">Department:</span>
+              <span style="font-size:13px;color:#1f2937">{{ Auth::user()->department ?? 'N/A' }}</span>
+            </div>
+          </div>
+
+          <button onclick="editMyProfile()" class="btn" style="width:100%;background:#14b8a6;color:white;display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:9px 20px;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;transition:background 0.2s" onmouseover="this.style.background='#0d9488'" onmouseout="this.style.background='#14b8a6'">
+            <svg style="width:16px;height:16px" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+            </svg>
+            Edit Profile
+          </button>
         </div>
       </div>
     </div>

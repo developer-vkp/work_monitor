@@ -2352,19 +2352,22 @@ function openUserManagementModal() {
   var title = document.getElementById('userMgmtTitle');
   var subtitle = document.getElementById('userMgmtSubtitle');
   var bulkUploadSection = document.getElementById('bulkUploadSection');
+  var userProfileDisplay = document.getElementById('userProfileDisplay');
 
   if (AUTH_USER.isAdmin) {
     // Admin view - show form and management title
     if (form) form.style.display = 'block';
     if (bulkUploadSection) bulkUploadSection.style.display = 'block';
+    if (userProfileDisplay) userProfileDisplay.style.display = 'none';
     if (title) title.textContent = 'User Management';
     if (subtitle) subtitle.textContent = 'Add new user to the system';
     // Reset to add mode
     resetUserForm();
   } else {
-    // Non-admin view - hide form, show profile title
+    // Non-admin view - hide form, show profile title and profile display
     if (form) form.style.display = 'none';
     if (bulkUploadSection) bulkUploadSection.style.display = 'none';
+    if (userProfileDisplay) userProfileDisplay.style.display = 'block';
     if (title) title.textContent = 'My Profile';
     if (subtitle) subtitle.textContent = 'View and edit your profile information';
   }
@@ -2373,8 +2376,6 @@ function openUserManagementModal() {
   var modal = document.getElementById('userManagementModal');
   if (modal) {
     modal.style.display = 'flex';
-    // Load users when modal opens
-    loadUsers();
   }
 }
 
@@ -2384,7 +2385,53 @@ function closeUserManagementModal() {
     modal.style.display = 'none';
     // Reset form
     resetUserForm();
+    // Reset to profile view for non-admin users
+    if (!AUTH_USER.isAdmin) {
+      var form = document.getElementById('addUserForm');
+      var userProfileDisplay = document.getElementById('userProfileDisplay');
+      if (form) form.style.display = 'none';
+      if (userProfileDisplay) userProfileDisplay.style.display = 'block';
+    }
   }
+}
+
+function editMyProfile() {
+  // Hide profile display and show form
+  var form = document.getElementById('addUserForm');
+  var userProfileDisplay = document.getElementById('userProfileDisplay');
+  var title = document.getElementById('userMgmtTitle');
+  var subtitle = document.getElementById('userMgmtSubtitle');
+
+  if (userProfileDisplay) userProfileDisplay.style.display = 'none';
+  if (form) form.style.display = 'block';
+  if (title) title.textContent = 'Edit Profile';
+  if (subtitle) subtitle.textContent = 'Update your profile information';
+
+  // Pre-fill form with current user data
+  document.getElementById('editUserId').value = AUTH_USER.id;
+  document.getElementById('userName').value = AUTH_USER.name;
+  document.getElementById('userEmail').value = AUTH_USER.email;
+  document.getElementById('userDepartment').value = AUTH_USER.department || '';
+  document.getElementById('userPassword').value = '';
+  document.getElementById('userPassword').required = false;
+  document.getElementById('passwordOptional').style.display = 'inline';
+  document.getElementById('submitUserBtnText').textContent = 'Update Profile';
+
+  // Handle role - for regular users, role might not be editable
+  var roleSelect = document.getElementById('userRole');
+  var predefinedRoles = ['Developer', 'Designer', 'Manager', 'Analyst', 'Tester', 'Engineer', 'Architect', 'Administrator'];
+
+  if (predefinedRoles.indexOf(AUTH_USER.role) !== -1) {
+    roleSelect.value = AUTH_USER.role;
+  } else {
+    // Custom role
+    roleSelect.value = 'Other';
+    document.getElementById('userRoleCustom').value = AUTH_USER.role;
+    document.getElementById('userRoleCustomWrapper').style.display = 'block';
+  }
+
+  // Disable role field for non-admin users (they can't change their own role)
+  if (roleSelect) roleSelect.disabled = true;
 }
 
 function resetUserForm() {
@@ -2396,6 +2443,10 @@ function resetUserForm() {
   document.getElementById('submitUserBtnText').textContent = 'Add User';
   document.getElementById('userPassword').required = true;
   document.getElementById('passwordOptional').style.display = 'none';
+
+  // Re-enable role field (in case it was disabled for non-admin edit)
+  var roleSelect = document.getElementById('userRole');
+  if (roleSelect) roleSelect.disabled = false;
 
   // Hide custom role input
   var roleCustomWrapper = document.getElementById('userRoleCustomWrapper');
