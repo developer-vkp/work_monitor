@@ -210,10 +210,18 @@ function rOverview(){
     });
   };
 
-  var st=allStats();var tot=st.total;
-  var apP=tot?Math.round(st.ap/tot*100):0,rjP=tot?Math.round(st.rj/tot*100):0;
-  var pnP=tot?Math.round(st.pn/tot*100):0,dnP=tot?Math.round(st.dn/tot*100):0;
-  var kpis=[{cl:'kg',lbl:'Approved',val:st.ap,pct:apP,fc:'#059669',filter:'approved'},{cl:'kr',lbl:'Rejected',val:st.rj,pct:rjP,fc:'#DC2626',filter:'rejected'},{cl:'ka',lbl:'Pending Review',val:st.pn,pct:pnP,fc:'#B45309',filter:'pending'},{cl:'kb',lbl:'Completion',val:dnP+'%',pct:dnP,fc:'#0369A1',filter:'all'}];
+  // Calculate stats for the selected date range only
+  var tasksInDateRange=TASKS.filter(function(t){
+    return t.date>=S.overviewFromDate && t.date<=S.overviewToDate;
+  });
+  var tot=tasksInDateRange.length;
+  var ap=tasksInDateRange.filter(function(t){return t.action==='Approved';}).length;
+  var rj=tasksInDateRange.filter(function(t){return t.action==='Rejected';}).length;
+  var pn=tasksInDateRange.filter(function(t){return !t.action;}).length;
+  var dn=tasksInDateRange.filter(function(t){return t.status==='Done';}).length;
+  var apP=tot?Math.round(ap/tot*100):0,rjP=tot?Math.round(rj/tot*100):0;
+  var pnP=tot?Math.round(pn/tot*100):0,dnP=tot?Math.round(dn/tot*100):0;
+  var kpis=[{cl:'kg',lbl:'Approved',val:ap,pct:apP,fc:'#059669',filter:'approved'},{cl:'kr',lbl:'Rejected',val:rj,pct:rjP,fc:'#DC2626',filter:'rejected'},{cl:'ka',lbl:'Pending Review',val:pn,pct:pnP,fc:'#B45309',filter:'pending'},{cl:'kb',lbl:'Completion',val:dnP+'%',pct:dnP,fc:'#0369A1',filter:'all'}];
   var kpiHTML=kpis.map(function(k){return '<div class="kpi '+k.cl+'" data-kpi-filter="'+k.filter+'" style="cursor:pointer"><div class="kpi-lbl">'+esc(k.lbl)+'</div><div class="kpi-val">'+k.val+'</div><div class="kpi-sub">'+k.pct+'% of total</div><div class="kpi-bar"><div class="kpi-fill" style="width:'+k.pct+'%;background:'+k.fc+'"></div></div></div>';}).join('');
   var active=activeStaff();
   var thumbsHTML=active.map(function(s,i){
@@ -1026,10 +1034,17 @@ function rConsolBar(){
   cbar.style.display='flex';
   var active=activeStaff();
   var totalStaff=active.length;
-  var submitted=active.filter(function(s){return tasksFor(s.id,S.selDate).length>=5;}).length;
-  var partial=active.filter(function(s){var t=tasksFor(s.id,S.selDate).length;return t>0&&t<5;}).length;
-  var none=active.filter(function(s){return tasksFor(s.id,S.selDate).length===0;}).length;
-  var allTs=TASKS.filter(function(t){return t.date===S.selDate;});
+
+  // Filter tasks by date range
+  var allTs=TASKS.filter(function(t){return t.date>=S.overviewFromDate && t.date<=S.overviewToDate;});
+
+  // Calculate stats based on date range
+  var staffWithTasks=active.filter(function(s){
+    var staffTasks=TASKS.filter(function(t){return t.staffId===s.id && t.date>=S.overviewFromDate && t.date<=S.overviewToDate;});
+    return staffTasks.length>0;
+  }).length;
+  var staffWithoutTasks=totalStaff-staffWithTasks;
+
   var approved=allTs.filter(function(t){return t.action==='Approved';}).length;
   var rejected=allTs.filter(function(t){return t.action==='Rejected';}).length;
   var pending=allTs.filter(function(t){return !t.action&&t.status==='Done';}).length;
@@ -1049,13 +1064,17 @@ function rConsolBar(){
   cbar.innerHTML=
     tile('rgba(8,145,178,.1)','var(--p2)','rgba(8,145,178,.25)','&#128101;','Total Staff',totalStaff)+
     '<div class="consol-divider"></div>'+
-    tile('var(--glight)','var(--green)','var(--gborder)','&#128203;','Submitted',submitted)+
-    tile('var(--bg2)','var(--t2)','var(--border)','&#8854;','Not Submitted',none)+
+    tile('var(--glight)','var(--green)','var(--gborder)','&#128203;','Submitted',staffWithTasks)+
+    tile('var(--bg2)','var(--t2)','var(--border)','&#8854;','Not Submitted',staffWithoutTasks)+
     '<div class="consol-divider"></div>'+
     '<div class="consol-right">'+
+      '<div style="display:flex;align-items:center;gap:8px">'+
+        '<label style="font-size:11px;font-weight:600;color:var(--t2);white-space:nowrap">From:</label>'+
+        '<input type="date" class="date-inp" id="cbar-from" value="'+S.overviewFromDate+'" style="width:130px">'+
+      '</div>'+
       '<div style="display:flex;align-items:center;gap:8px;margin-right:12px">'+
-        '<label style="font-size:11px;font-weight:600;color:var(--t2)">Date:</label>'+
-        '<input type="date" class="date-inp" id="cbar-date" value="'+S.selDate+'">'+
+        '<label style="font-size:11px;font-weight:600;color:var(--t2);white-space:nowrap">To:</label>'+
+        '<input type="date" class="date-inp" id="cbar-to" value="'+S.overviewToDate+'" style="width:130px">'+
       '</div>'+
       '<div class="download-dropdown">'+
         '<button class="export-btn" id="download-toggle-btn">'+
@@ -1070,12 +1089,6 @@ function rConsolBar(){
               '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>'+
             '</svg>'+
             'Excel'+
-          '</button>'+
-          '<button class="download-dropdown-item" id="exp-pdf">'+
-            '<svg style="width:14px;height:14px" fill="none" stroke="currentColor" viewBox="0 0 24 24">'+
-              '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>'+
-            '</svg>'+
-            'PDF'+
           '</button>'+
         '</div>'+
       '</div>'+
@@ -1097,10 +1110,22 @@ function rConsolBar(){
   }
 
   var eXl=el('exp-xlsx');if(eXl)eXl.onclick=function(){exportReport('xlsx');if(downloadMenu)downloadMenu.classList.remove('show');};
-  var ePdf=el('exp-pdf');if(ePdf)ePdf.onclick=function(){exportReport('pdf');if(downloadMenu)downloadMenu.classList.remove('show');};
 
-  // Date picker handler
-  var cbarDate=el('cbar-date');if(cbarDate)cbarDate.onchange=function(){S.selDate=this.value;render();};
+  // Date range picker handlers
+  var cbarFrom=el('cbar-from');
+  if(cbarFrom){
+    cbarFrom.onchange=function(){
+      S.overviewFromDate=this.value;
+      render();
+    };
+  }
+  var cbarTo=el('cbar-to');
+  if(cbarTo){
+    cbarTo.onchange=function(){
+      S.overviewToDate=this.value;
+      render();
+    };
+  }
 }
 
 // ── TASK MANAGEMENT PAGE ────────────────────────────────────────
@@ -2096,55 +2121,19 @@ function restoreData(){
 
 // ── EXPORT REPORT ─────────────────────────────────────────────────
 function exportReport(fmt){
-  var date=S.selDate;
+  var fromDate=S.overviewFromDate;
+  var toDate=S.overviewToDate;
+  var dateRangeText=(fromDate===toDate)?fromDate:(fromDate+' to '+toDate);
   var active=activeStaff();
-  if(fmt==='json'){
-    var data={exportDate:new Date().toISOString(),reportDate:date,director:DIR,staff:active,tasks:TASKS};
-    var blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
-    var a=document.createElement('a');a.href=URL.createObjectURL(blob);
-    a.download='WorkMonitor_Report_'+date+'.json';a.click();
-    toast('JSON exported','s');return;
-  }
-  if(fmt==='pdf'){
-    // Build printable HTML and open in new window for print-to-PDF
-    var rows=active.map(function(s){
-      var ts=TASKS.filter(function(t){return t.staffId===s.id&&t.date===date;});
-      var ap=ts.filter(function(t){return t.action==='Approved';}).length;
-      var rj=ts.filter(function(t){return t.action==='Rejected';}).length;
-      return '<tr><td>'+esc(s.id)+'</td><td>'+esc(s.name)+'</td><td>'+esc(s.role)+'</td><td>'+esc(s.inst)+'</td>'+
-        '<td>'+ts.length+'/5</td><td style="color:#059669;font-weight:600">'+ap+'</td>'+
-        '<td style="color:#DC2626;font-weight:600">'+rj+'</td>'+
-        '<td style="color:#B45309">'+(ts.length-ap-rj)+'</td></tr>'+
-        ts.map(function(t){return '<tr style="background:#F8FBFF"><td></td><td colspan="2" style="padding-left:24px;font-size:11px;color:#2B5270">Task '+t.n+': '+esc(t.desc.slice(0,60))+'</td>'+
-          '<td></td><td style="text-align:center"><span style="font-size:10px">'+esc(t.status)+'</span></td>'+
-          '<td colspan="2" style="font-size:10px;color:'+(t.action==='Approved'?'#059669':'#DC2626')+'">'+esc(t.action||'Pending')+'</td>'+
-          '<td style="font-size:10px;color:#5A8AA8">'+esc(t.remarks.slice(0,40))+'</td></tr>';}).join('');
-    }).join('');
-    var html='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>WorkMonitor Report</title>'+
-      '<style>body{font-family:Arial,sans-serif;font-size:12px;color:#0F2535}'+
-      'h1{background:linear-gradient(135deg,#003D5C,#0891B2);color:#fff;padding:12px 18px;border-radius:8px;font-size:16px;margin-bottom:4px}'+
-      'h2{font-size:12px;color:#5A8AA8;margin-bottom:16px;font-weight:400}'+
-      'table{width:100%;border-collapse:collapse;margin-top:12px}'+
-      'th{background:#E0F2FE;color:#003D5C;padding:7px 10px;font-size:10px;text-transform:uppercase;letter-spacing:.05em;text-align:left;border:1px solid #BAE6FD}'+
-      'td{padding:6px 10px;border:1px solid #E0F2FE;vertical-align:top}'+
-      'tr:nth-child(even) td{background:#F7FBFE}'+
-      '@media print{body{margin:0}}</style></head><body>'+
-      '<h1>WorkMonitor Pro &mdash; Daily Report</h1>'+
-      '<h2>Date: '+esc(date)+' &nbsp;&bull;&nbsp; Director: '+esc(DIR.name)+' ('+esc(DIR.desig)+') &nbsp;&bull;&nbsp; Generated: '+new Date().toLocaleString('en-IN')+'</h2>'+
-      '<table><thead><tr><th>ID</th><th>Name</th><th>Designation</th><th>Department</th><th>Tasks</th><th>Approved</th><th>Rejected</th><th>Pending</th></tr></thead>'+
-      '<tbody>'+rows+'</tbody></table></body></html>';
-    var w=window.open('','_blank','width=900,height=700');
-    w.document.write(html);w.document.close();
-    setTimeout(function(){w.print();},400);
-    toast('PDF ready — use Print > Save as PDF','s');return;
-  }
+
   if(fmt==='xlsx'){
-    // Build CSV (Excel-compatible) since we cannot use openpyxl in browser
+    // Build CSV (Excel-compatible) for date range
     var csvRows=['Staff ID,Name,Designation,Department,Date,Task No,Task Description,Status,Action,Remarks'];
     active.forEach(function(s){
-      var ts=TASKS.filter(function(t){return t.staffId===s.id&&t.date===date;});
+      // Filter tasks within date range
+      var ts=TASKS.filter(function(t){return t.staffId===s.id && t.date>=fromDate && t.date<=toDate;});
       if(ts.length===0){
-        csvRows.push([s.id,s.name,s.role,s.inst,date,'','','','',''].join(','));
+        csvRows.push([s.id,s.name,s.role,s.inst,dateRangeText,'','','','',''].join(','));
       } else {
         ts.forEach(function(t){
           function q(v){return '"'+(String(v||'').replace(/"/g,'""'))+'"';}
@@ -2154,7 +2143,7 @@ function exportReport(fmt){
     });
     var blob2=new Blob([csvRows.join('\n')],{type:'text/csv;charset=utf-8'});
     var a2=document.createElement('a');a2.href=URL.createObjectURL(blob2);
-    a2.download='WorkMonitor_Report_'+date+'.csv';a2.click();
+    a2.download='WorkMonitor_Report_'+fromDate+'_to_'+toDate+'.csv';a2.click();
     toast('Excel (CSV) exported — open in Excel','s');
   }
 }
