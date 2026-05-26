@@ -43,7 +43,7 @@
             "n": 1,
             "desc": "New task",
             "status": "Done",
-            "action": "Rejected",
+            "action": "Approved",
             "remarks": null,
             "staffRem": null,
             "priority": "Medium"
