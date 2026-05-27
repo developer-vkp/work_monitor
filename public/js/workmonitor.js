@@ -1272,8 +1272,8 @@ function showMyTasks(){
   // Initialize filter state if not exists
   if(!S.myTaskFilters){
     S.myTaskFilters={
-      fromDate:_today,
-      toDate:_today,
+      fromDate:relDate(-1),  // Yesterday
+      toDate:_today,         // Today
       priority:'all',
       status:'all'
     };
@@ -1420,7 +1420,7 @@ function showMyTasks(){
                   (task.priority?'<span style="padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;background:'+priorityBg+';color:'+priorityColor+'">'+esc(task.priority)+'</span>':'')+
                 '</div>'+
               '</div>'+
-              '<div style="display:flex;gap:8px;align-items:center">'+
+              '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'+
                 '<div style="padding:5px 10px;border-radius:6px;font-size:11px;font-weight:600;background:'+statusBg+';color:'+statusColor+'">'+
                   statusText+
                 '</div>';
@@ -1430,8 +1430,23 @@ function showMyTasks(){
             html+='<button onclick="markTaskDone('+task.id+')" style="padding:5px 10px;background:#10b981;color:white;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap">✓ Done</button>';
           }
 
+          // Edit button - allow editing if not approved/rejected
+          if(!task.action){
+            html+='<button onclick="editMyTask('+task.id+')" style="padding:5px 10px;background:#3b82f6;color:white;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap">✏ Edit</button>';
+          }
+
+          // Delete button
+          html+='<button onclick="deleteTask('+task.id+',\''+esc(AUTH_USER.name)+'\')" style="padding:5px 10px;background:#dc2626;color:white;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap">🗑 Delete</button>';
+
           html+='  </div>'+
             '</div>';
+
+          if(task.remarks){
+            html+='<div style="background:#FEF3C7;border-left:3px solid #F59E0B;border-radius:6px;padding:8px;margin-bottom:6px">'+
+              '<div style="font-size:10px;font-weight:600;color:#D97706;margin-bottom:3px">Director Remarks:</div>'+
+              '<div style="font-size:12px;color:#92400E">'+esc(task.remarks)+'</div>'+
+            '</div>';
+          }
 
           if(task.adminRem){
             html+='<div style="background:#fff;border-radius:6px;padding:8px;margin-bottom:6px">'+
@@ -1527,6 +1542,89 @@ function markTaskDone(taskId){
       showMyTasks(); // Refresh the view
     }
   );
+}
+
+// Edit task for users
+function editMyTask(taskId){
+  var task=TASKS.find(function(t){return t.id==taskId;});
+  if(!task){
+    toast('Task not found','e');
+    return;
+  }
+
+  // Don't allow editing if task is already approved or rejected
+  if(task.action){
+    toast('Cannot edit task that has been '+task.action.toLowerCase(),'w');
+    return;
+  }
+
+  var html='<div class="modal" onclick="event.stopPropagation()" style="max-width:550px">'+
+    '<div class="m-head">'+
+      '<div style="flex:1">'+
+        '<div style="font-size:18px;font-weight:700;color:var(--t1)">Edit Task</div>'+
+        '<div style="font-size:12px;color:var(--t3);margin-top:4px">Update your task details</div>'+
+      '</div>'+
+      '<button onclick="closeOv()" style="background:none;border:none;font-size:24px;color:var(--t3);cursor:pointer;padding:0;width:32px;height:32px">&times;</button>'+
+    '</div>'+
+    '<div class="m-body" style="max-height:calc(90vh - 200px);overflow-y:auto">'+
+      '<div style="margin-bottom:16px">'+
+        '<label style="display:block;font-size:12px;font-weight:600;color:var(--t2);margin-bottom:6px">Task Description *</label>'+
+        '<textarea id="edit-task-desc" rows="4" style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;font-family:inherit;resize:vertical" placeholder="Describe what you did...">'+esc(task.desc||'')+'</textarea>'+
+      '</div>'+
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">'+
+        '<div>'+
+          '<label style="display:block;font-size:12px;font-weight:600;color:var(--t2);margin-bottom:6px">Status</label>'+
+          '<select id="edit-task-status" style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px">'+
+            '<option value="Pending"'+(task.status==='Pending'?' selected':'')+'>Pending</option>'+
+            '<option value="Done"'+(task.status==='Done'?' selected':'')+'>Done</option>'+
+          '</select>'+
+        '</div>'+
+        '<div>'+
+          '<label style="display:block;font-size:12px;font-weight:600;color:var(--t2);margin-bottom:6px">Priority</label>'+
+          '<select id="edit-task-priority" style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px">'+
+            '<option value="High"'+(task.priority==='High'?' selected':'')+'>High</option>'+
+            '<option value="Medium"'+(task.priority==='Medium'?' selected':'')+'>Medium</option>'+
+            '<option value="Low"'+(task.priority==='Low'?' selected':'')+'>Low</option>'+
+          '</select>'+
+        '</div>'+
+      '</div>'+
+      '<div style="margin-bottom:16px">'+
+        '<label style="display:block;font-size:12px;font-weight:600;color:var(--t2);margin-bottom:6px">My Notes (Optional)</label>'+
+        '<textarea id="edit-task-staffrem" rows="3" style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;font-family:inherit;resize:vertical" placeholder="Add any additional notes...">'+esc(task.staffRem||'')+'</textarea>'+
+      '</div>'+
+    '</div>'+
+    '<div class="m-foot" style="display:flex;gap:10px;justify-content:flex-end">'+
+      '<button onclick="closeOv()" class="btn" style="background:var(--bg2);color:var(--t2);padding:10px 20px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-weight:600;cursor:pointer">Cancel</button>'+
+      '<button id="save-edit-task-btn" class="btn" style="background:#3b82f6;color:white;padding:10px 20px;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer">Save Changes</button>'+
+    '</div>'+
+  '</div>';
+
+  showOv(html);
+
+  // Save button handler
+  el('save-edit-task-btn').onclick=function(){
+    var desc=(el('edit-task-desc')||{}).value||'';
+    var status=(el('edit-task-status')||{}).value||'Pending';
+    var priority=(el('edit-task-priority')||{}).value||'Medium';
+    var staffRem=(el('edit-task-staffrem')||{}).value||'';
+
+    if(!desc.trim()){
+      toast('Please enter a task description','w');
+      return;
+    }
+
+    // Update task
+    task.desc=desc.trim();
+    task.status=status;
+    task.priority=priority;
+    task.staffRem=staffRem.trim();
+
+    toast('Task updated successfully!','s');
+    addFeed('Task updated: '+task.desc,'blue');
+    schedSave();
+    closeOv();
+    showMyTasks(); // Refresh the view
+  };
 }
 
 // Delete task (Admin only)
