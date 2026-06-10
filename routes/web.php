@@ -36,6 +36,7 @@ Route::middleware('auth')->group(function () {
     Route::prefix('api/tasks')->group(function () {
         Route::get('/', [TaskDataController::class, 'index'])->name('api.tasks.index');
         Route::post('/save', [TaskDataController::class, 'store'])->name('api.tasks.store');
+        Route::delete('/{id}', [TaskDataController::class, 'destroy'])->name('api.tasks.destroy');
     });
 
     // Database Storage - Activity Feed

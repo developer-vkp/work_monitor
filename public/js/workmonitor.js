@@ -970,7 +970,38 @@ function openAssign(id){
     closeOv();rLp();renderContent();
   };
   var mb=document.querySelector('#ov-root .m-body');
-  if(mb)mb.addEventListener('click',function(e){var btn=e.target.closest('[data-delid]');if(!btn)return;var did=parseInt(btn.dataset.delid);TASKS=TASKS.filter(function(t){return t.id!==did;});toast('Task removed','e');closeOv();openAssign(id);rLp();renderContent();});
+  if(mb)mb.addEventListener('click',function(e){
+    var btn=e.target.closest('[data-delid]');
+    if(!btn)return;
+    var did=parseInt(btn.dataset.delid);
+
+    // Call DELETE API endpoint
+    fetch('/api/tasks/'+did,{
+      method:'DELETE',
+      credentials:'same-origin',
+      headers:{
+        'Content-Type':'application/json',
+        'X-CSRF-TOKEN':document.querySelector('meta[name="csrf-token"]')?.content||''
+      }
+    }).then(function(r){
+      return r.json();
+    }).then(function(data){
+      if(data.success){
+        // Remove from local TASKS array
+        TASKS=TASKS.filter(function(t){return t.id!==did;});
+        toast('Task removed','e');
+        closeOv();
+        openAssign(id);
+        rLp();
+        renderContent();
+      }else{
+        toast('Failed to delete task: '+(data.message||'Unknown error'),'e');
+      }
+    }).catch(function(e){
+      console.error('Delete task error:',e);
+      toast('Error deleting task','e');
+    });
+  });
 }
 
 function confirmClearStaff(){
@@ -1644,28 +1675,47 @@ function deleteTask(taskId,staffName){
     'Delete Task?',
     'Are you sure you want to delete this task: "'+esc(task.desc)+'"? This action cannot be undone.',
     function(){
-      // On confirm - remove task from TASKS array
-      var taskIndex=TASKS.findIndex(function(t){return t.id==taskId;});
-      if(taskIndex>-1){
-        TASKS.splice(taskIndex,1);
-        toast('Task deleted successfully!','s');
-        addFeed('Task deleted: '+task.desc,'red');
-        schedSave();
+      // On confirm - call DELETE API endpoint
+      fetch('/api/tasks/'+taskId,{
+        method:'DELETE',
+        credentials:'same-origin',
+        headers:{
+          'Content-Type':'application/json',
+          'X-CSRF-TOKEN':document.querySelector('meta[name="csrf-token"]')?.content||''
+        }
+      }).then(function(r){
+        return r.json();
+      }).then(function(data){
+        if(data.success){
+          // Remove from local TASKS array
+          var taskIndex=TASKS.findIndex(function(t){return t.id==taskId;});
+          if(taskIndex>-1){
+            TASKS.splice(taskIndex,1);
+          }
 
-        // Close modal and refresh the view
-        closeOv();
+          toast('Task deleted successfully!','s');
+          addFeed('Task deleted: '+task.desc,'red');
 
-        // Refresh based on current view
-        if(S.view==='tasks'){
-          if(AUTH_USER.isAdmin){
-            rTaskManagementPage();
+          // Close modal and refresh the view
+          closeOv();
+
+          // Refresh based on current view
+          if(S.view==='tasks'){
+            if(AUTH_USER.isAdmin){
+              rTaskManagementPage();
+            }else{
+              showMyTasks();
+            }
           }else{
-            showMyTasks();
+            render();
           }
         }else{
-          render();
+          toast('Failed to delete task: '+(data.message||'Unknown error'),'e');
         }
-      }
+      }).catch(function(e){
+        console.error('Delete task error:',e);
+        toast('Error deleting task. Please try again.','e');
+      });
     }
   );
 }

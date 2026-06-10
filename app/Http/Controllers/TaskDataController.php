@@ -69,21 +69,7 @@ class TaskDataController extends Controller
         try {
             DB::beginTransaction();
 
-            // Get all task IDs from the request
-            $taskIds = collect($request->tasks)->pluck('id')->filter();
-
-            // Get unique user IDs and dates from the request to scope deletion
-            $userIds = collect($request->tasks)->pluck('staffId')->unique();
-            $dates = collect($request->tasks)->pluck('date')->unique();
-
-            // Delete tasks that are not in the request (they were deleted in the frontend)
-            // but ONLY for the specific users and dates being saved
-            if ($taskIds->isNotEmpty() && $userIds->isNotEmpty() && $dates->isNotEmpty()) {
-                Task::whereIn('user_id', $userIds)
-                    ->whereIn('task_date', $dates)
-                    ->whereNotIn('id', $taskIds)
-                    ->delete();
-            }
+            // No deletion logic here - tasks are only deleted via dedicated DELETE endpoint
 
             // Upsert all tasks
             foreach ($request->tasks as $taskData) {
@@ -209,6 +195,44 @@ class TaskDataController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to add activity feed',
+            ], 500);
+        }
+    }
+
+    /**
+     * Delete a specific task
+     */
+    public function destroy($id)
+    {
+        try {
+            $task = Task::find($id);
+
+            if (!$task) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Task not found',
+                ], 404);
+            }
+
+            // Optional: Add authorization check here
+            // For example, only allow admin or task owner to delete
+            // if (Auth::id() !== $task->user_id && !Auth::user()->isAdmin) {
+            //     return response()->json([
+            //         'success' => false,
+            //         'message' => 'Unauthorized to delete this task',
+            //     ], 403);
+            // }
+
+            $task->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Task deleted successfully',
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to delete task: ' . $e->getMessage(),
             ], 500);
         }
     }
