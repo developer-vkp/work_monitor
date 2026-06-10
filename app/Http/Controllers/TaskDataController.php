@@ -72,9 +72,17 @@ class TaskDataController extends Controller
             // Get all task IDs from the request
             $taskIds = collect($request->tasks)->pluck('id')->filter();
 
+            // Get unique user IDs and dates from the request to scope deletion
+            $userIds = collect($request->tasks)->pluck('staffId')->unique();
+            $dates = collect($request->tasks)->pluck('date')->unique();
+
             // Delete tasks that are not in the request (they were deleted in the frontend)
-            if ($taskIds->isNotEmpty()) {
-                Task::whereNotIn('id', $taskIds)->delete();
+            // but ONLY for the specific users and dates being saved
+            if ($taskIds->isNotEmpty() && $userIds->isNotEmpty() && $dates->isNotEmpty()) {
+                Task::whereIn('user_id', $userIds)
+                    ->whereIn('task_date', $dates)
+                    ->whereNotIn('id', $taskIds)
+                    ->delete();
             }
 
             // Upsert all tasks
