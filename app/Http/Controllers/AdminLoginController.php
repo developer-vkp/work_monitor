@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -32,7 +33,17 @@ class AdminLoginController extends Controller
             'password' => ['required'],
         ]);
 
-        // Attempt to log the user in
+        // First, check if user exists
+        $user = User::where('email', $credentials['email'])->first();
+
+        if (!$user) {
+            // User does not exist
+            return back()->withErrors([
+                'email' => 'User does not exist. Please check your email address.',
+            ])->onlyInput('email');
+        }
+
+        // User exists, now attempt to log them in
         $remember = $request->filled('remember');
 
         if (Auth::attempt($credentials, $remember)) {
@@ -41,9 +52,9 @@ class AdminLoginController extends Controller
             return redirect()->intended(route('admin.dashboard'))->with('login_success', 'Welcome back! You have successfully logged in.');
         }
 
-        // If authentication fails
+        // User exists but password is incorrect
         return back()->withErrors([
-            'email' => 'The provided credentials do not match our records.',
+            'password' => 'Incorrect password. Please try again.',
         ])->onlyInput('email');
     }
 
