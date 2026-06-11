@@ -1085,7 +1085,12 @@ function rConsolBar(){
   // Calculate today's tasks
   var todaysTasks=TASKS.filter(function(t){return t.date===_today;});
   var todayTotal=todaysTasks.length;
-  var todayNotSubmitted=todaysTasks.filter(function(t){return !t.action;}).length;
+
+  // Calculate staff who haven't created tasks today
+  var staffNotCreated=active.filter(function(s){
+    var staffTodayTasks=TASKS.filter(function(t){return t.staffId===s.id && t.date===_today;});
+    return staffTodayTasks.length===0;
+  }).length;
 
   function tile(bg,clr,bdr,icon,label,val,clickAction){
     var cursor=clickAction?'cursor:pointer;':'';
@@ -1103,7 +1108,7 @@ function rConsolBar(){
     tile('rgba(8,145,178,.1)','var(--p2)','rgba(8,145,178,.25)','&#128101;','Total Staff',totalStaff,'users')+
     '<div class="consol-divider"></div>'+
     tile('var(--glight)','var(--green)','var(--gborder)','&#128203;','Today Total Tasks',todayTotal,'tasks')+
-    tile('var(--bg2)','var(--t2)','var(--border)','&#8854;','Tasks Not Submitted',todayNotSubmitted,'tasks')+
+    tile('var(--bg2)','var(--t2)','var(--border)','&#8854;','Tasks Not Created',staffNotCreated,'staff-not-created')+
     '<div class="consol-divider"></div>'+
     '<div class="consol-right">'+
       '<div style="display:flex;align-items:center;gap:8px">'+
@@ -1168,6 +1173,8 @@ function rConsolBar(){
         renderContent();
         rLp();
         rTabBar();
+      }else if(action==='staff-not-created'){
+        showStaffNotCreated();
       }
     };
   });
@@ -1203,6 +1210,70 @@ function rConsolBar(){
       }
     };
   }
+}
+
+// ── STAFF NOT CREATED VIEW ───────────────────────────────────────
+function showStaffNotCreated(){
+  var active=activeStaff();
+
+  // Get staff who haven't created tasks today
+  var staffNotCreated=active.filter(function(s){
+    var staffTodayTasks=TASKS.filter(function(t){return t.staffId===s.id && t.date===_today;});
+    return staffTodayTasks.length===0;
+  });
+
+  var html='<div class="dash">'+
+    '<div class="sec-h">'+
+      '<div>'+
+        '<div class="sec-title">Staff Who Haven\'t Created Tasks Today</div>'+
+        '<div class="sec-sub">'+staffNotCreated.length+' staff members have not created tasks for '+fmtDate(_today)+'</div>'+
+      '</div>'+
+      '<button class="btn btn-out" onclick="S.view=\'overview\';renderContent();rLp();rTabBar()">'+
+        '<svg style="width:14px;height:14px;margin-right:4px" fill="none" stroke="currentColor" viewBox="0 0 24 24">'+
+          '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>'+
+        '</svg>'+
+        'Back to Overview'+
+      '</button>'+
+    '</div>'+
+    '<div class="staff-table-container">'+
+      '<table class="staff-table">'+
+        '<thead><tr>'+
+          '<th>Name</th>'+
+          '<th>Email</th>'+
+          '<th>Role</th>'+
+          '<th>Department</th>'+
+          '<th>Last Task Date</th>'+
+        '</tr></thead>'+
+        '<tbody>';
+
+  if(staffNotCreated.length===0){
+    html+='<tr><td colspan="5" style="text-align:center;padding:40px;color:var(--t3)">All staff have created tasks today!</td></tr>';
+  }else{
+    staffNotCreated.forEach(function(s){
+      // Find the last task date for this staff member
+      var allStaffTasks=TASKS.filter(function(t){return t.staffId===s.id;});
+      var lastTaskDate='Never';
+      if(allStaffTasks.length>0){
+        var dates=allStaffTasks.map(function(t){return t.date;}).sort().reverse();
+        lastTaskDate=fmtDate(dates[0]);
+      }
+
+      var ini2=ini(s.name);
+      html+='<tr>'+
+        '<td><div style="display:flex;align-items:center;gap:10px">'+
+          '<div class="ava ava-md" style="background:'+gbg(s.id)+';color:'+gc(s.id)+'">'+ini2+'</div>'+
+          '<div style="font-size:14px;font-weight:600;color:var(--text)">'+esc(s.name)+'</div>'+
+        '</div></td>'+
+        '<td><span style="font-size:13px;color:var(--t2)">'+esc(s.email||'—')+'</span></td>'+
+        '<td><span class="role-badge">'+esc(s.role||'—')+'</span></td>'+
+        '<td><span class="dept-badge">'+esc(s.department||s.inst||'—')+'</span></td>'+
+        '<td><span style="font-size:13px;color:var(--t3)">'+lastTaskDate+'</span></td>'+
+      '</tr>';
+    });
+  }
+
+  html+='</tbody></table></div></div>';
+  el('ct').innerHTML=html;
 }
 
 // ── TASK MANAGEMENT PAGE ────────────────────────────────────────
