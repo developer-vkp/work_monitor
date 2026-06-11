@@ -156,35 +156,18 @@
           </div>
           <div>
             <label style="display:block;font-size:13px;color:#374151;font-weight:600;margin-bottom:6px">Role / Designation</label>
-            <select id="userRole" name="role" required style="width:100%;padding:10px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:14px;color:#1f2937;background:#f9fafb;outline:none;cursor:pointer" onchange="toggleRoleCustomInput()">
+            <select id="userRole" name="role" required style="width:100%;padding:10px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:14px;color:#1f2937;background:#f9fafb;outline:none;cursor:pointer">
               <option value="">Select Role</option>
-              <option value="Developer">Developer</option>
-              <option value="Designer">Designer</option>
-              <option value="Manager">Manager</option>
-              <option value="Analyst">Analyst</option>
-              <option value="Tester">Tester</option>
-              <option value="Engineer">Engineer</option>
-              <option value="Architect">Architect</option>
-              <option value="Administrator">Administrator</option>
-              <option value="Other">Other (type manually)</option>
+              <option value="Admin">Admin</option>
+              <option value="User">User</option>
             </select>
-            <div id="userRoleCustomWrapper" style="display:none;margin-top:6px">
-              <input type="text" id="userRoleCustom" placeholder="Type your role" style="width:100%;padding:10px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:14px;color:#1f2937;background:#f9fafb;outline:none">
-            </div>
           </div>
           <div>
             <label style="display:block;font-size:13px;color:#374151;font-weight:600;margin-bottom:6px">Department</label>
             <select id="userDepartment" name="department" required style="width:100%;padding:10px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:14px;color:#1f2937;background:#f9fafb;outline:none;cursor:pointer">
               <option value="">Select Department</option>
-              <option value="Engineering">Engineering</option>
-              <option value="Design">Design</option>
-              <option value="Marketing">Marketing</option>
-              <option value="Sales">Sales</option>
-              <option value="HR">HR</option>
-              <option value="Finance">Finance</option>
-              <option value="Operations">Operations</option>
+              <option value="Admin">Admin</option>
               <option value="Support">Support</option>
-              <option value="Other">Other</option>
             </select>
           </div>
           <div style="grid-column:1/-1">

@@ -26,7 +26,7 @@ var S={role:AUTH_USER.role||'user',staffId:AUTH_USER.id||'',selStaff:null,selDat
   view:AUTH_USER.isAdmin?'overview':'tasks',  // Default view based on role
   boardFilter:'all',boardSearch:'',boardCollapsed:{},boardDp:null,
   showAddForm:false,taskFromDate:relDate(-1),taskToDate:_today,
-  overviewFromDate:_today,overviewToDate:_today};
+  overviewFromDate:_today,overviewToDate:_today,overviewSearch:''};
 var _newStaff={name:'',email:'',role:'',inst:''};
 var _editSD={};
 
@@ -223,7 +223,12 @@ function rOverview(){
   var pnP=tot?Math.round(pn/tot*100):0,dnP=tot?Math.round(dn/tot*100):0;
   var kpis=[{cl:'kg',lbl:'Approved',val:ap,pct:apP,fc:'#059669',filter:'approved'},{cl:'kr',lbl:'Rejected',val:rj,pct:rjP,fc:'#DC2626',filter:'rejected'},{cl:'ka',lbl:'Pending Review',val:pn,pct:pnP,fc:'#B45309',filter:'pending'},{cl:'kb',lbl:'Completion',val:dnP+'%',pct:dnP,fc:'#0369A1',filter:'all'}];
   var kpiHTML=kpis.map(function(k){return '<div class="kpi '+k.cl+'" data-kpi-filter="'+k.filter+'" style="cursor:pointer"><div class="kpi-lbl">'+esc(k.lbl)+'</div><div class="kpi-val">'+k.val+'</div><div class="kpi-sub">'+k.pct+'% of total</div><div class="kpi-bar"><div class="kpi-fill" style="width:'+k.pct+'%;background:'+k.fc+'"></div></div></div>';}).join('');
-  var active=activeStaff();
+  var active=activeStaff().sort(function(a,b){return a.name.localeCompare(b.name);});
+  // Filter by search query
+  if(S.overviewSearch){
+    var query=S.overviewSearch.toLowerCase();
+    active=active.filter(function(s){return s.name.toLowerCase().indexOf(query)!==-1;});
+  }
   var thumbsHTML=active.map(function(s,i){
     var st2=tasksInRange(s.id,S.overviewFromDate,S.overviewToDate);
     var ap2=st2.filter(function(t){return t.action==='Approved';}).length;
@@ -256,15 +261,16 @@ function rOverview(){
   var feedHTML=FEED.slice(0,8).map(function(a){var c={'green':'var(--green)','red':'var(--red)','amber':'var(--amber)','blue':'var(--p3)'}[a.col]||'var(--p3)';return '<div class="feed-row"><div class="feed-dot" style="background:'+c+'"></div><div><div class="feed-txt">'+esc(a.msg)+'</div><div class="feed-tm">'+esc(a.time)+'</div></div></div>';}).join('');
 
   var dateRangeText=(S.overviewFromDate===S.overviewToDate)?fmtDate(S.overviewFromDate):(fmtDate(S.overviewFromDate)+' to '+fmtDate(S.overviewToDate));
+  var staffCountText=S.overviewSearch?'Showing '+active.length+' of '+activeStaff().length+' staff':'Click any card to review tasks';
 
   el('ct').innerHTML='<div class="dash fi">'+
     '<div class="kpi-row">'+kpiHTML+'</div>'+
-    '<div class="card-sec"><div class="sec-h"><div><div class="sec-title">Staff Overview &mdash; '+esc(dateRangeText)+'</div><div class="sec-sub" style="margin-top:1px">Click any card to review tasks</div></div></div>'+
+    '<div class="card-sec"><div class="sec-h"><div><div class="sec-title">Staff Overview &mdash; '+esc(dateRangeText)+'</div><div class="sec-sub" style="margin-top:1px">'+staffCountText+'</div></div></div>'+
       '<div class="thumb-grid" id="tg">'+thumbsHTML+'</div></div>'+
     '<div class="card-sec"><div class="sec-h"><div class="sec-title">Activity</div><div class="live">Live</div></div>'+(FEED.length?feedHTML:'<div style="font-size:11px;color:var(--t4)">No activity yet.</div>')+'</div>'+
   '</div>';
 
-  var tg=el('tg');if(tg)tg.addEventListener('click',function(e){var c=e.target.closest('.sthumb');if(!c)return;var s=activeStaff()[parseInt(c.dataset.i)];if(s){S.selStaff=s.id;rOverview();}});
+  var tg=el('tg');if(tg)tg.addEventListener('click',function(e){var c=e.target.closest('.sthumb');if(!c)return;var s=active[parseInt(c.dataset.i)];if(s){S.selStaff=s.id;rOverview();}});
   // KPI card click handler
   var kpiCards=document.querySelectorAll('[data-kpi-filter]');kpiCards.forEach(function(card){card.addEventListener('click',function(){var filter=this.dataset.kpiFilter;S.boardFilter=filter;S.view='board';S.selStaff=null;renderContent();rLp();rTabBar();});});
 }
@@ -1076,14 +1082,15 @@ function rConsolBar(){
   }).length;
   var staffWithoutTasks=totalStaff-staffWithTasks;
 
-  var approved=allTs.filter(function(t){return t.action==='Approved';}).length;
-  var rejected=allTs.filter(function(t){return t.action==='Rejected';}).length;
-  var pending=allTs.filter(function(t){return !t.action&&t.status==='Done';}).length;
-  var totalTasks=allTs.length;
-  var compPct=totalTasks?Math.round(allTs.filter(function(t){return t.status==='Done';}).length/totalTasks*100):0;
+  // Calculate today's tasks
+  var todaysTasks=TASKS.filter(function(t){return t.date===_today;});
+  var todayTotal=todaysTasks.length;
+  var todayNotSubmitted=todaysTasks.filter(function(t){return !t.action;}).length;
 
-  function tile(bg,clr,bdr,icon,label,val){
-    return '<span class="consol-stat" style="background:'+bg+';color:'+clr+';border:1px solid '+bdr+'">'+
+  function tile(bg,clr,bdr,icon,label,val,clickAction){
+    var cursor=clickAction?'cursor:pointer;':'';
+    var dataAction=clickAction?'data-action="'+clickAction+'"':'';
+    return '<span class="consol-stat" '+dataAction+' style="background:'+bg+';color:'+clr+';border:1px solid '+bdr+';'+cursor+'">'+
       '<span class="cs-icon">'+icon+'</span>'+
       '<span class="cs-body">'+
         '<span class="cs-label">'+label+'</span>'+
@@ -1093,12 +1100,15 @@ function rConsolBar(){
   }
 
   cbar.innerHTML=
-    tile('rgba(8,145,178,.1)','var(--p2)','rgba(8,145,178,.25)','&#128101;','Total Staff',totalStaff)+
+    tile('rgba(8,145,178,.1)','var(--p2)','rgba(8,145,178,.25)','&#128101;','Total Staff',totalStaff,'users')+
     '<div class="consol-divider"></div>'+
-    tile('var(--glight)','var(--green)','var(--gborder)','&#128203;','Submitted',staffWithTasks)+
-    tile('var(--bg2)','var(--t2)','var(--border)','&#8854;','Not Submitted',staffWithoutTasks)+
+    tile('var(--glight)','var(--green)','var(--gborder)','&#128203;','Today Total Tasks',todayTotal,'tasks')+
+    tile('var(--bg2)','var(--t2)','var(--border)','&#8854;','Tasks Not Submitted',todayNotSubmitted,'tasks')+
     '<div class="consol-divider"></div>'+
     '<div class="consol-right">'+
+      '<div style="display:flex;align-items:center;gap:8px">'+
+        '<input type="text" id="overviewSearchInput" placeholder="Search staff by name..." value="'+esc(S.overviewSearch)+'" style="padding:10px 20px;border:1px solid var(--border);border-radius:25px;font-size:13px;width:320px;outline:none;box-shadow:0 1px 2px rgba(0,0,0,0.05)">'+
+      '</div>'+
       '<div style="display:flex;align-items:center;gap:8px">'+
         '<label style="font-size:11px;font-weight:600;color:var(--t2);white-space:nowrap">From:</label>'+
         '<input type="date" class="date-inp" id="cbar-from" value="'+S.overviewFromDate+'" style="width:130px">'+
@@ -1142,6 +1152,26 @@ function rConsolBar(){
 
   var eXl=el('exp-xlsx');if(eXl)eXl.onclick=function(){exportReport('xlsx');if(downloadMenu)downloadMenu.classList.remove('show');};
 
+  // Tile click handlers
+  var tiles=document.querySelectorAll('.consol-stat[data-action]');
+  tiles.forEach(function(tile){
+    tile.onclick=function(){
+      var action=this.dataset.action;
+      if(action==='users'){
+        S.view='users';
+        renderContent();
+        rLp();
+        rTabBar();
+      }else if(action==='tasks'){
+        S.view='tasks';
+        S.selDate=_today;
+        renderContent();
+        rLp();
+        rTabBar();
+      }
+    };
+  });
+
   // Date range picker handlers
   var cbarFrom=el('cbar-from');
   if(cbarFrom){
@@ -1155,6 +1185,22 @@ function rConsolBar(){
     cbarTo.onchange=function(){
       S.overviewToDate=this.value;
       render();
+    };
+  }
+
+  // Search input handler
+  var searchInput=el('overviewSearchInput');
+  if(searchInput){
+    searchInput.oninput=function(e){
+      var cursorPos=e.target.selectionStart;
+      S.overviewSearch=e.target.value;
+      renderContent();
+      // Restore focus and cursor position
+      var newInput=el('overviewSearchInput');
+      if(newInput){
+        newInput.focus();
+        newInput.setSelectionRange(cursorPos,cursorPos);
+      }
     };
   }
 }
