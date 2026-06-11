@@ -3115,3 +3115,10 @@ document.addEventListener('click', function(e) {
   if (e.target === profileModal) closeProfileModal();
   if (e.target === userModal) closeUserManagementModal();
 });
+
+// ── AUTO-REFRESH ─────────────────────────────────────────────────
+// Auto-refresh data every 5 minutes (300000 milliseconds)
+setInterval(function() {
+  console.log('Auto-refreshing data...');
+  loadData();
+}, 300000);
