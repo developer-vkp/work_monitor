@@ -206,13 +206,22 @@ function rOverview(){
   // Helper function to get tasks in date range for a user
   var tasksInRange=function(staffId,fromDate,toDate){
     return TASKS.filter(function(t){
-      return t.staffId===staffId && t.date>=fromDate && t.date<=toDate;
+      if(t.staffId!==staffId)return false;
+      // Normalize dates to YYYY-MM-DD format for comparison
+      var taskDate=String(t.date||'').substring(0,10);
+      var from=String(fromDate||'').substring(0,10);
+      var to=String(toDate||'').substring(0,10);
+      return taskDate>=from && taskDate<=to;
     });
   };
 
   // Calculate stats for the selected date range only
   var tasksInDateRange=TASKS.filter(function(t){
-    return t.date>=S.overviewFromDate && t.date<=S.overviewToDate;
+    // Normalize dates to YYYY-MM-DD format for comparison
+    var taskDate=String(t.date||'').substring(0,10);
+    var from=String(S.overviewFromDate||'').substring(0,10);
+    var to=String(S.overviewToDate||'').substring(0,10);
+    return taskDate>=from && taskDate<=to;
   });
   var tot=tasksInDateRange.length;
   var ap=tasksInDateRange.filter(function(t){return t.action==='Approved';}).length;
@@ -1073,11 +1082,22 @@ function rConsolBar(){
   var totalStaff=active.length;
 
   // Filter tasks by date range
-  var allTs=TASKS.filter(function(t){return t.date>=S.overviewFromDate && t.date<=S.overviewToDate;});
+  var allTs=TASKS.filter(function(t){
+    var taskDate=String(t.date||'').substring(0,10);
+    var from=String(S.overviewFromDate||'').substring(0,10);
+    var to=String(S.overviewToDate||'').substring(0,10);
+    return taskDate>=from && taskDate<=to;
+  });
 
   // Calculate stats based on date range
   var staffWithTasks=active.filter(function(s){
-    var staffTasks=TASKS.filter(function(t){return t.staffId===s.id && t.date>=S.overviewFromDate && t.date<=S.overviewToDate;});
+    var staffTasks=TASKS.filter(function(t){
+      if(t.staffId!==s.id)return false;
+      var taskDate=String(t.date||'').substring(0,10);
+      var from=String(S.overviewFromDate||'').substring(0,10);
+      var to=String(S.overviewToDate||'').substring(0,10);
+      return taskDate>=from && taskDate<=to;
+    });
     return staffTasks.length>0;
   }).length;
   var staffWithoutTasks=totalStaff-staffWithTasks;
@@ -1290,7 +1310,11 @@ function rTaskManagementPage(){
   // Filter to show only users with tasks in the selected date range
   var staffWithTasks=active.filter(function(s){
     var tasksInRange=TASKS.filter(function(t){
-      return t.staffId===s.id&&t.date>=S.taskFromDate&&t.date<=S.taskToDate;
+      if(t.staffId!==s.id)return false;
+      var taskDate=String(t.date||'').substring(0,10);
+      var from=String(S.taskFromDate||'').substring(0,10);
+      var to=String(S.taskToDate||'').substring(0,10);
+      return taskDate>=from && taskDate<=to;
     });
     return tasksInRange.length>0;
   });
@@ -1338,7 +1362,11 @@ function rTaskManagementPage(){
   }else{
     staffWithTasks.forEach(function(s){
       var dateRangeTasks=TASKS.filter(function(t){
-        return t.staffId===s.id&&t.date>=S.taskFromDate&&t.date<=S.taskToDate;
+        if(t.staffId!==s.id)return false;
+        var taskDate=String(t.date||'').substring(0,10);
+        var from=String(S.taskFromDate||'').substring(0,10);
+        var to=String(S.taskToDate||'').substring(0,10);
+        return taskDate>=from && taskDate<=to;
       });
       var ini2=ini(s.name);
       html+='<tr class="task-staff-row" data-name="'+esc(s.name).toLowerCase()+'" data-role="'+esc(s.role||'').toLowerCase()+'" data-dept="'+esc(s.department||s.inst||'').toLowerCase()+'">'+
@@ -1895,7 +1923,11 @@ function viewStaffTasks(id){
 
   // Filter tasks by staff and date range
   var allTasks=TASKS.filter(function(t){
-    return t.staffId==s.id&&t.date>=S.taskFromDate&&t.date<=S.taskToDate;
+    if(t.staffId!=s.id)return false;
+    var taskDate=String(t.date||'').substring(0,10);
+    var from=String(S.taskFromDate||'').substring(0,10);
+    var to=String(S.taskToDate||'').substring(0,10);
+    return taskDate>=from && taskDate<=to;
   });
 
   console.log('Filtered tasks:',allTasks.length);
@@ -2396,7 +2428,13 @@ function exportReport(fmt){
     var csvRows=['Staff ID,Name,Designation,Department,Date,Task No,Task Description,Status,Action,Remarks'];
     active.forEach(function(s){
       // Filter tasks within date range
-      var ts=TASKS.filter(function(t){return t.staffId===s.id && t.date>=fromDate && t.date<=toDate;});
+      var ts=TASKS.filter(function(t){
+        if(t.staffId!==s.id)return false;
+        var taskDate=String(t.date||'').substring(0,10);
+        var from=String(fromDate||'').substring(0,10);
+        var to=String(toDate||'').substring(0,10);
+        return taskDate>=from && taskDate<=to;
+      });
       if(ts.length===0){
         csvRows.push([s.id,s.name,s.role,s.inst,dateRangeText,'','','','',''].join(','));
       } else {
