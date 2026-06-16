@@ -18,37 +18,18 @@ class TaskDataController extends Controller
         try {
             $user = auth()->user();
 
-            // Default date range: yesterday and today only
-            $fromDate = $request->input('from_date', now()->subDay()->format('Y-m-d'));
-            $toDate = $request->input('to_date', now()->format('Y-m-d'));
-
             // Check if user is admin
             $isAdmin = in_array(strtolower($user->role ?? ''), ['admin', 'administrator']);
 
-            // Debug: Check total tasks in database for this user
-            $totalTasksForUser = Task::where('user_id', $user->id)->count();
-            $allTaskDates = Task::where('user_id', $user->id)
-                ->pluck('task_date')
-                ->map(function($date) {
-                    return $date->format('Y-m-d');
-                })
-                ->unique()
-                ->values();
+            $query = Task::with('user:id,name,email,role,department');
 
-            \Log::info('Tasks API Debug', [
-                'user_id' => $user->id,
-                'user_name' => $user->name,
-                'user_role' => $user->role,
-                'is_admin' => $isAdmin,
-                'server_time' => now()->format('Y-m-d H:i:s'),
-                'filter_from' => $fromDate,
-                'filter_to' => $toDate,
-                'total_tasks_for_user' => $totalTasksForUser,
-                'all_task_dates_for_user' => $allTaskDates,
-            ]);
-
-            $query = Task::with('user:id,name,email,role,department')
-                ->whereBetween('task_date', [$fromDate, $toDate]);
+            // Optional date range filter (only if explicitly provided)
+            if ($request->has('from_date') && $request->has('to_date')) {
+                $query->whereBetween('task_date', [
+                    $request->input('from_date'),
+                    $request->input('to_date')
+                ]);
+            }
 
             // If user is not admin, only show their own tasks
             // If admin, show all tasks (or filter by user_id if provided)
@@ -77,16 +58,11 @@ class TaskDataController extends Controller
                     ];
                 });
 
-            \Log::info('Tasks API Result', [
-                'filtered_tasks' => $tasks->count(),
-            ]);
-
             return response()->json([
                 'success' => true,
                 'data' => $tasks,
             ]);
         } catch (\Exception $e) {
-            \Log::error('Failed to fetch tasks', ['error' => $e->getMessage()]);
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to fetch tasks: ' . $e->getMessage(),

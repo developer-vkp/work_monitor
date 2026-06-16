@@ -1459,17 +1459,10 @@ function showMyTasks(){
     return t.staffId==AUTH_USER.id; // Use == to handle string/number type differences
   });
 
-  console.log('🔍 My Tasks Filter Debug:');
-  console.log('  Total tasks in system:', TASKS.length);
-  console.log('  My tasks (before filters):', allMyTasks.length);
-  console.log('  Filter range:', S.myTaskFilters.fromDate, 'to', S.myTaskFilters.toDate);
-  console.log('  User ID:', AUTH_USER.id);
-
   // Apply filters
   var myTasks=allMyTasks.filter(function(t){
     // Date filter
     if(t.date<S.myTaskFilters.fromDate||t.date>S.myTaskFilters.toDate){
-      console.log('  ❌ Filtered out (date):', t.date, t.desc.substring(0,30));
       return false;
     }
     // Priority filter
@@ -1493,11 +1486,6 @@ function showMyTasks(){
     }
     return true;
   });
-
-  console.log('  ✅ Tasks after filtering:', myTasks.length);
-  if(myTasks.length>0){
-    console.log('  📋 First filtered task:', myTasks[0]);
-  }
 
   // Sort by date descending (newest first)
   myTasks.sort(function(a,b){
@@ -2267,9 +2255,6 @@ function autoSave(){
   var ind=el('save-ind');
   if(ind)ind.style.opacity='1';
 
-  console.log('Saving tasks to database. Total tasks:',TASKS.length);
-  console.log('First task sample:',TASKS[0]);
-
   // Save tasks data to database
   fetch('/api/tasks/save',{
     method:'POST',
@@ -2285,7 +2270,6 @@ function autoSave(){
       console.error('Tasks save failed:',data.message,data);
       toast('Failed to save tasks: '+(data.message||'Unknown error'),'e');
     }else{
-      console.log('Tasks saved successfully');
       // Reload tasks from database to sync IDs
       reloadTasksFromDB();
     }
@@ -2304,7 +2288,6 @@ function autoSave(){
 function schedSave(){clearTimeout(_saveTimer);_saveTimer=setTimeout(autoSave,800);}
 
 function reloadTasksFromDB(){
-  console.log('Reloading tasks from database...');
   fetch('/api/tasks',{
     method:'GET',
     credentials:'same-origin',
@@ -2411,13 +2394,6 @@ function restoreData(){
       TASKS.length=0;
       response.data.forEach(function(t){TASKS.push(t);});
 
-      console.log('✅ Loaded',TASKS.length,'tasks from database');
-      console.log('📅 Date range:',
-        'Oldest:', TASKS.reduce(function(min,t){return t.date<min?t.date:min;}, '9999-99-99'),
-        'Newest:', TASKS.reduce(function(max,t){return t.date>max?t.date:max;}, '0000-00-00')
-      );
-      console.log('📋 Sample task:', TASKS[0]);
-
       // Update TID to be max task ID + 1 to avoid conflicts
       var maxId=Math.max.apply(null,TASKS.map(function(t){return t.id||0;}));
       if(maxId>TID){
@@ -2426,8 +2402,6 @@ function restoreData(){
 
       restored=true;
       render();
-    }else{
-      console.warn('⚠️ No tasks loaded from database. Response:', response);
     }
   }).catch(function(e){console.error('Tasks load error:',e);});
 
