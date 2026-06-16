@@ -22,13 +22,36 @@ class TaskDataController extends Controller
             $fromDate = $request->input('from_date', now()->subDay()->format('Y-m-d'));
             $toDate = $request->input('to_date', now()->format('Y-m-d'));
 
+            // Check if user is admin
+            $isAdmin = in_array(strtolower($user->role ?? ''), ['admin', 'administrator']);
+
+            // Debug: Check total tasks in database for this user
+            $totalTasksForUser = Task::where('user_id', $user->id)->count();
+            $allTaskDates = Task::where('user_id', $user->id)
+                ->pluck('task_date')
+                ->map(function($date) {
+                    return $date->format('Y-m-d');
+                })
+                ->unique()
+                ->values();
+
+            \Log::info('Tasks API Debug', [
+                'user_id' => $user->id,
+                'user_name' => $user->name,
+                'user_role' => $user->role,
+                'is_admin' => $isAdmin,
+                'server_time' => now()->format('Y-m-d H:i:s'),
+                'filter_from' => $fromDate,
+                'filter_to' => $toDate,
+                'total_tasks_for_user' => $totalTasksForUser,
+                'all_task_dates_for_user' => $allTaskDates,
+            ]);
+
             $query = Task::with('user:id,name,email,role,department')
                 ->whereBetween('task_date', [$fromDate, $toDate]);
 
             // If user is not admin, only show their own tasks
             // If admin, show all tasks (or filter by user_id if provided)
-            $isAdmin = in_array(strtolower($user->role ?? ''), ['admin', 'administrator']);
-
             if (!$isAdmin) {
                 $query->where('user_id', $user->id);
             } elseif ($request->has('user_id')) {
@@ -54,11 +77,8 @@ class TaskDataController extends Controller
                     ];
                 });
 
-            \Log::info('Tasks API called', [
-                'user_id' => $user->id,
-                'is_admin' => $isAdmin,
-                'date_range' => ['from' => $fromDate, 'to' => $toDate],
-                'total_tasks' => $tasks->count(),
+            \Log::info('Tasks API Result', [
+                'filtered_tasks' => $tasks->count(),
             ]);
 
             return response()->json([
@@ -221,6 +241,51 @@ class TaskDataController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to add activity feed',
+            ], 500);
+        }
+    }
+
+    /**
+     * Debug endpoint - Get ALL tasks without filters (temporary)
+     */
+    public function debug()
+    {
+        try {
+            $user = auth()->user();
+
+            $allTasks = Task::with('user:id,name,email,role,department')
+                ->orderBy('task_date', 'desc')
+                ->orderBy('task_number', 'asc')
+                ->get()
+                ->map(function ($task) {
+                    return [
+                        'id' => $task->id,
+                        'staffId' => $task->user_id,
+                        'staffName' => $task->user->name ?? 'N/A',
+                        'n' => $task->task_number,
+                        'desc' => $task->description,
+                        'date' => $task->task_date->format('Y-m-d'),
+                        'status' => $task->status,
+                        'created_at' => $task->created_at->format('Y-m-d H:i:s'),
+                    ];
+                });
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Debug endpoint - showing ALL tasks',
+                'server_time' => now()->format('Y-m-d H:i:s'),
+                'logged_in_user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'role' => $user->role,
+                ],
+                'total_tasks' => $allTasks->count(),
+                'data' => $allTasks,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage(),
             ], 500);
         }
     }

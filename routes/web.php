@@ -35,6 +35,7 @@ Route::middleware('auth')->group(function () {
     // Database Storage - Tasks
     Route::prefix('api/tasks')->group(function () {
         Route::get('/', [TaskDataController::class, 'index'])->name('api.tasks.index');
+        Route::get('/debug', [TaskDataController::class, 'debug'])->name('api.tasks.debug');
         Route::post('/save', [TaskDataController::class, 'store'])->name('api.tasks.store');
         Route::delete('/{id}', [TaskDataController::class, 'destroy'])->name('api.tasks.destroy');
     });
