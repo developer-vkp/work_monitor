@@ -36,11 +36,21 @@ class TaskDataController extends Controller
                     ];
                 });
 
+            \Log::info('Tasks API called', [
+                'total_tasks' => $tasks->count(),
+                'date_range' => [
+                    'oldest' => $tasks->min('date'),
+                    'newest' => $tasks->max('date'),
+                ],
+                'sample_task' => $tasks->first(),
+            ]);
+
             return response()->json([
                 'success' => true,
                 'data' => $tasks,
             ]);
         } catch (\Exception $e) {
+            \Log::error('Failed to fetch tasks', ['error' => $e->getMessage()]);
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to fetch tasks: ' . $e->getMessage(),
