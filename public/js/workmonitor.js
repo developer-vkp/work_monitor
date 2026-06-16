@@ -18,7 +18,19 @@ var DIR={name:AUTH_USER.name,desig:'Administrator'};
 var STAFF=[];
 var TID=100;var TASKS=[];var FEED=[];
 var _today=todayStr();
-function addFeed(msg,col){FEED.unshift({id:++TID,msg:msg,col:col||'blue',time:new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})});if(FEED.length>50)FEED.pop();}
+function addFeed(msg,col){
+  var feed={id:++TID,msg:msg,col:col||'blue',time:new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})};
+  FEED.unshift(feed);
+  if(FEED.length>50)FEED.pop();
+
+  // Save to database
+  fetch('/api/feed',{
+    method:'POST',
+    credentials:'same-origin',
+    headers:{'Content-Type':'application/json','X-CSRF-TOKEN':document.querySelector('meta[name="csrf-token"]')?.content||''},
+    body:JSON.stringify({message:msg,color:col||'blue'})
+  }).catch(function(e){console.error('Feed save error:',e);});
+}
 (function(){addFeed('WorkMonitor Pro ready','blue');})();
 
 // ── STATE ─────────────────────────────────────────────────────────
@@ -2404,6 +2416,23 @@ function restoreData(){
       render();
     }
   }).catch(function(e){console.error('Tasks load error:',e);});
+
+  // Load activity feed from database
+  fetch('/api/feed',{
+    method:'GET',
+    credentials:'same-origin',
+    headers:{'Content-Type':'application/json'}
+  }).then(function(r){
+    if(!r.ok)return null;
+    return r.json().catch(function(){return null;});
+  }).then(function(response){
+    if(response&&response.success&&response.data&&response.data.length){
+      FEED.length=0;
+      response.data.forEach(function(f){
+        FEED.push({id:f.id,msg:f.msg,col:f.col,time:f.time});
+      });
+    }
+  }).catch(function(e){console.error('Feed load error:',e);});
 
   return restored;
 }
