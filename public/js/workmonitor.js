@@ -25,7 +25,7 @@ function addFeed(msg,col){FEED.unshift({id:++TID,msg:msg,col:col||'blue',time:ne
 var S={role:AUTH_USER.role||'user',staffId:AUTH_USER.id||'',selStaff:null,selDate:_today,
   view:AUTH_USER.isAdmin?'overview':'tasks',  // Default view based on role
   boardFilter:'all',boardSearch:'',boardCollapsed:{},boardDp:null,
-  showAddForm:false,taskFromDate:relDate(-1),taskToDate:_today,
+  showAddForm:false,taskFromDate:relDate(-30),taskToDate:_today,
   overviewFromDate:_today,overviewToDate:_today,overviewSearch:''};
 var _newStaff={name:'',email:'',role:'',inst:''};
 var _editSD={};
@@ -1448,8 +1448,8 @@ function showMyTasks(){
   // Initialize filter state if not exists
   if(!S.myTaskFilters){
     S.myTaskFilters={
-      fromDate:relDate(-1),  // Yesterday
-      toDate:_today,         // Today
+      fromDate:relDate(-30),  // Last 30 days
+      toDate:_today,          // Today
       priority:'all',
       status:'all'
     };
