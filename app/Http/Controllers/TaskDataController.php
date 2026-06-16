@@ -11,13 +11,31 @@ use Illuminate\Support\Facades\DB;
 class TaskDataController extends Controller
 {
     /**
-     * Get all tasks data
+     * Get all tasks data with filters
      */
-    public function index()
+    public function index(Request $request)
     {
         try {
-            $tasks = Task::with('user:id,name,email,role,department')
-                ->orderBy('task_date', 'desc')
+            $user = auth()->user();
+
+            // Default date range: yesterday and today only
+            $fromDate = $request->input('from_date', now()->subDay()->format('Y-m-d'));
+            $toDate = $request->input('to_date', now()->format('Y-m-d'));
+
+            $query = Task::with('user:id,name,email,role,department')
+                ->whereBetween('task_date', [$fromDate, $toDate]);
+
+            // If user is not admin, only show their own tasks
+            // If admin, show all tasks (or filter by user_id if provided)
+            $isAdmin = in_array(strtolower($user->role ?? ''), ['admin', 'administrator']);
+
+            if (!$isAdmin) {
+                $query->where('user_id', $user->id);
+            } elseif ($request->has('user_id')) {
+                $query->where('user_id', $request->input('user_id'));
+            }
+
+            $tasks = $query->orderBy('task_date', 'desc')
                 ->orderBy('task_number', 'asc')
                 ->get()
                 ->map(function ($task) {
@@ -37,12 +55,10 @@ class TaskDataController extends Controller
                 });
 
             \Log::info('Tasks API called', [
+                'user_id' => $user->id,
+                'is_admin' => $isAdmin,
+                'date_range' => ['from' => $fromDate, 'to' => $toDate],
                 'total_tasks' => $tasks->count(),
-                'date_range' => [
-                    'oldest' => $tasks->min('date'),
-                    'newest' => $tasks->max('date'),
-                ],
-                'sample_task' => $tasks->first(),
             ]);
 
             return response()->json([
