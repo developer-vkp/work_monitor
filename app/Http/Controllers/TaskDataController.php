@@ -31,6 +31,25 @@ class TaskDataController extends Controller
                 ]);
             }
 
+            // Optional priority filter
+            if ($request->has('priority') && $request->input('priority') !== 'all') {
+                $query->where('priority', $request->input('priority'));
+            }
+
+            // Optional status filter
+            if ($request->has('status') && $request->input('status') !== 'all') {
+                $statusFilter = $request->input('status');
+                if ($statusFilter === 'Done') {
+                    $query->where('status', 'Done');
+                } elseif ($statusFilter === 'Pending') {
+                    $query->whereNull('action')->where('status', '!=', 'Done');
+                } elseif ($statusFilter === 'Approved') {
+                    $query->where('action', 'Approved');
+                } elseif ($statusFilter === 'Rejected') {
+                    $query->where('action', 'Rejected');
+                }
+            }
+
             // If user is not admin, only show their own tasks
             // If admin, show all tasks (or filter by user_id if provided)
             if (!$isAdmin) {

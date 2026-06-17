@@ -1343,6 +1343,12 @@ function rTaskManagementPage(){
           '<label style="font-size:12px;font-weight:600;color:var(--t2);white-space:nowrap">To:</label>'+
           '<input type="date" class="date-inp" id="task-to-date" value="'+S.taskToDate+'" style="width:140px">'+
         '</div>'+
+        '<button id="search-admin-tasks-btn" class="btn" style="background:#3b82f6;color:#ffffff;padding:8px 16px;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap">'+
+          '<svg style="width:16px;height:16px" fill="none" stroke="currentColor" viewBox="0 0 24 24">'+
+            '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>'+
+          '</svg>'+
+          'Search'+
+        '</button>'+
         '<div class="search-box">'+
           '<svg style="width:16px;height:16px;color:var(--t3);flex-shrink:0" fill="none" stroke="currentColor" viewBox="0 0 24 24">'+
             '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>'+
@@ -1417,14 +1423,17 @@ function rTaskManagementPage(){
   // Date range handlers
   var fromDateInput=el('task-from-date');
   var toDateInput=el('task-to-date');
+  var searchAdminBtn=el('search-admin-tasks-btn');
+
   if(fromDateInput){
     fromDateInput.onchange=function(){
       S.taskFromDate=this.value;
       // Ensure from date is not after to date
       if(S.taskFromDate>S.taskToDate){
         S.taskToDate=S.taskFromDate;
+        if(toDateInput) toDateInput.value=S.taskToDate;
       }
-      rTaskManagementPage();
+      // Don't auto-filter, wait for search button click
     };
   }
   if(toDateInput){
@@ -1433,8 +1442,16 @@ function rTaskManagementPage(){
       // Ensure to date is not before from date
       if(S.taskToDate<S.taskFromDate){
         S.taskFromDate=S.taskToDate;
+        if(fromDateInput) fromDateInput.value=S.taskFromDate;
       }
-      rTaskManagementPage();
+      // Don't auto-filter, wait for search button click
+    };
+  }
+
+  // Search button - triggers backend filtering by date
+  if(searchAdminBtn){
+    searchAdminBtn.onclick=function(){
+      loadTasksWithDateFilter(S.taskFromDate, S.taskToDate);
     };
   }
 
@@ -1546,6 +1563,12 @@ function showMyTasks(){
           '<option value="Approved"'+(S.myTaskFilters.status==='Approved'?' selected':'')+'>Approved</option>'+
           '<option value="Rejected"'+(S.myTaskFilters.status==='Rejected'?' selected':'')+'>Rejected</option>'+
         '</select>'+
+        '<button id="search-tasks-btn" class="btn" style="background:#3b82f6;color:#ffffff;padding:8px 16px;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap">'+
+          '<svg style="width:16px;height:16px" fill="none" stroke="currentColor" viewBox="0 0 24 24">'+
+            '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>'+
+          '</svg>'+
+          'Search'+
+        '</button>'+
         '<button id="add-my-task-btn" class="btn" style="background:#14b8a6;color:#ffffff;padding:8px 16px;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;margin-left:8px">'+
           '<svg style="width:16px;height:16px" fill="none" stroke="currentColor" viewBox="0 0 24 24">'+
             '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>'+
@@ -1668,14 +1691,16 @@ function showMyTasks(){
   var toDate=el('my-task-to');
   var priority=el('my-task-priority');
   var status=el('my-task-status');
+  var searchBtn=el('search-tasks-btn');
 
   if(fromDate){
     fromDate.onchange=function(){
       S.myTaskFilters.fromDate=this.value;
       if(S.myTaskFilters.fromDate>S.myTaskFilters.toDate){
         S.myTaskFilters.toDate=S.myTaskFilters.fromDate;
+        if(toDate) toDate.value=S.myTaskFilters.toDate;
       }
-      showMyTasks();
+      // Don't auto-filter, wait for search button click
     };
   }
 
@@ -1684,22 +1709,30 @@ function showMyTasks(){
       S.myTaskFilters.toDate=this.value;
       if(S.myTaskFilters.toDate<S.myTaskFilters.fromDate){
         S.myTaskFilters.fromDate=S.myTaskFilters.toDate;
+        if(fromDate) fromDate.value=S.myTaskFilters.fromDate;
       }
-      showMyTasks();
+      // Don't auto-filter, wait for search button click
     };
   }
 
   if(priority){
     priority.onchange=function(){
       S.myTaskFilters.priority=this.value;
-      showMyTasks();
+      // Don't auto-filter, wait for search button click
     };
   }
 
   if(status){
     status.onchange=function(){
       S.myTaskFilters.status=this.value;
-      showMyTasks();
+      // Don't auto-filter, wait for search button click
+    };
+  }
+
+  // Search button - triggers backend filtering by date
+  if(searchBtn){
+    searchBtn.onclick=function(){
+      loadTasksWithDateFilter(S.myTaskFilters.fromDate, S.myTaskFilters.toDate, S.myTaskFilters.priority, S.myTaskFilters.status);
     };
   }
 
@@ -2326,6 +2359,61 @@ function reloadTasksFromDB(){
     }
   }).catch(function(e){
     console.error('Tasks reload error:',e);
+  });
+}
+
+function loadTasksWithDateFilter(fromDate, toDate, priority, status){
+  var url='/api/tasks';
+  var params=[];
+
+  if(fromDate && toDate){
+    params.push('from_date='+encodeURIComponent(fromDate));
+    params.push('to_date='+encodeURIComponent(toDate));
+  }
+
+  if(priority && priority!=='all'){
+    params.push('priority='+encodeURIComponent(priority));
+  }
+
+  if(status && status!=='all'){
+    params.push('status='+encodeURIComponent(status));
+  }
+
+  if(params.length>0){
+    url+='?'+params.join('&');
+  }
+
+  console.log('Loading tasks with filters:',{fromDate:fromDate,toDate:toDate,priority:priority,status:status});
+
+  fetch(url,{
+    method:'GET',
+    credentials:'same-origin',
+    headers:{'Content-Type':'application/json'}
+  }).then(function(r){
+    if(!r.ok){
+      console.warn('Tasks load returned status:',r.status);
+      toast('Failed to load tasks','e');
+      return null;
+    }
+    return r.json();
+  }).then(function(response){
+    if(response&&response.success&&response.data){
+      TASKS.length=0;
+      response.data.forEach(function(t){TASKS.push(t);});
+
+      // Update TID to be max task ID + 1
+      var maxId=Math.max.apply(null,TASKS.map(function(t){return t.id||0;}));
+      if(maxId>TID){
+        TID=maxId;
+      }
+
+      console.log('Tasks loaded with filter. Total:',TASKS.length);
+      toast('Tasks loaded successfully','s');
+      render();
+    }
+  }).catch(function(e){
+    console.error('Tasks load error:',e);
+    toast('Error loading tasks','e');
   });
 }
 
