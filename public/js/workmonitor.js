@@ -8,8 +8,8 @@ function ini(n){return (n||'').split(' ').filter(Boolean).slice(0,2).map(functio
 function fmtDate(d){if(!d)return'';var o=new Date(d),t=new Date();t.setHours(0,0,0,0);o.setHours(0,0,0,0);var df=(t-o)/864e5;if(df===0)return'Today';if(df===1)return'Yesterday';return o.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'2-digit'});}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function el(id){return document.getElementById(id);}
-function todayStr(){return new Date().toISOString().slice(0,10);}
-function relDate(n){return new Date(Date.now()+n*864e5).toISOString().slice(0,10);}
+function todayStr(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function relDate(n){var d=new Date(Date.now()+n*864e5);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 
 // ── DATA ─────────────────────────────────────────────────────────
 // AUTH_USER is defined inline in the HTML to access Laravel Blade variables
