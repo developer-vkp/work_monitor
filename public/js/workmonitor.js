@@ -5,7 +5,7 @@ var PAL=['#0891B2','#7C3AED','#DB2777','#059669','#B45309','#DC2626','#0284C7','
 function gc(id){return PAL[Math.abs(parseInt(String(id||'0').replace(/\D/g,''))%PAL.length)];}
 function gbg(id){return gc(id)+'18';}
 function ini(n){return (n||'').split(' ').filter(Boolean).slice(0,2).map(function(x){return x[0];}).join('').toUpperCase();}
-function fmtDate(d){if(!d)return'';var o=new Date(d),t=new Date();t.setHours(0,0,0,0);o.setHours(0,0,0,0);var df=(t-o)/864e5;if(df===0)return'Today';if(df===1)return'Yesterday';return o.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'2-digit'});}
+function fmtDate(d){if(!d)return'';var o=new Date(d);return o.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'2-digit'});}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function el(id){return document.getElementById(id);}
 function todayStr(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
@@ -14,9 +14,9 @@ function relDate(n){var d=new Date(Date.now()+n*864e5);return d.getFullYear()+'-
 // ── DATA ─────────────────────────────────────────────────────────
 // AUTH_USER is defined inline in the HTML to access Laravel Blade variables
 
-var DIR={name:AUTH_USER.name,desig:'Administrator'};
+var DIR={name:AUTH_USER.name,desig:AUTH_USER.role||'User'};
 var STAFF=[];
-var TID=100;var TASKS=[];var TASKS_FILTERED=[];var TASKS_FILTER_ACTIVE=false;var FEED=[];
+var TID=100;var TASKS=[];var FEED=[];
 var _today=todayStr();
 function addFeed(msg,col){
   var feed={id:++TID,msg:msg,col:col||'blue',time:new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})};
@@ -62,22 +62,13 @@ function allStats(){
 }
 
 // State Management Helpers
+// All tasks come from backend - no client-side filtering needed
 function getTasksForDisplay(){
-  return TASKS_FILTER_ACTIVE ? TASKS_FILTERED : TASKS;
-}
-
-function updateFilteredView(){
-  if(!TASKS_FILTER_ACTIVE)return;
-  // This will be populated when filters are applied
-  // For now, if filter is active but TASKS_FILTERED is empty, deactivate filter
-  if(TASKS_FILTERED.length===0){
-    TASKS_FILTER_ACTIVE=false;
-  }
+  return TASKS;
 }
 
 function addTaskToArray(task){
   TASKS.push(task);
-  updateFilteredView();
 }
 
 function updateTaskInArray(taskId,updates){
@@ -88,7 +79,6 @@ function updateTaskInArray(taskId,updates){
         task[key]=updates[key];
       }
     }
-    updateFilteredView();
   }
 }
 
@@ -96,7 +86,6 @@ function removeTaskFromArray(taskId){
   var idx=TASKS.findIndex(function(t){return t.id===taskId;});
   if(idx!==-1){
     TASKS.splice(idx,1);
-    updateFilteredView();
   }
 }
 
@@ -1533,37 +1522,9 @@ function showMyTasks(){
     return; // Exit here, loadTasksWithDateFilter will call render() which calls showMyTasks() again
   }
 
-  var allMyTasks=getTasksForDisplay().filter(function(t){
-    return t.staffId==AUTH_USER.id; // Use == to handle string/number type differences
-  });
-
-  // Apply filters (only when not using backend filter)
-  var myTasks=TASKS_FILTER_ACTIVE?allMyTasks:allMyTasks.filter(function(t){
-    // Date filter
-    if(t.date<S.myTaskFilters.fromDate||t.date>S.myTaskFilters.toDate){
-      return false;
-    }
-    // Priority filter
-    if(S.myTaskFilters.priority!=='all'&&t.priority!==S.myTaskFilters.priority){
-      return false;
-    }
-    // Status filter
-    if(S.myTaskFilters.status!=='all'){
-      if(S.myTaskFilters.status==='Done'&&t.status!=='Done'){
-        return false;
-      }
-      if(S.myTaskFilters.status==='Pending'&&(t.action||t.status==='Done')){
-        return false;
-      }
-      if(S.myTaskFilters.status==='Approved'&&t.action!=='Approved'){
-        return false;
-      }
-      if(S.myTaskFilters.status==='Rejected'&&t.action!=='Rejected'){
-        return false;
-      }
-    }
-    return true;
-  });
+  // All filtering is done by backend - just display the TASKS array
+  // Backend already handles user-specific filtering (non-admin users see only their tasks)
+  var myTasks=getTasksForDisplay();
 
   // Sort by date descending (newest first)
   myTasks.sort(function(a,b){
@@ -1584,49 +1545,44 @@ function showMyTasks(){
     S.myTasksCollapsed={};
   }
 
-  var filterInfo=TASKS_FILTER_ACTIVE?'Showing: '+S.myTaskFilters.fromDate+' to '+S.myTaskFilters.toDate:'Tasks assigned to you';
+  var taskTitle=AUTH_USER.isAdmin?'All Tasks':'My Tasks';
+  var filterInfo='Showing: '+S.myTaskFilters.fromDate+' to '+S.myTaskFilters.toDate;
 
   var html='<div class="dash">'+
     '<div class="sec-h">'+
       '<div>'+
-        '<div class="sec-title">My Tasks</div>'+
+        '<div class="sec-title">'+taskTitle+'</div>'+
         '<div class="sec-sub">'+filterInfo+'</div>'+
       '</div>'+
-      '<div style="display:flex;align-items:center;gap:12px;margin-left:auto">'+
-        '<div style="display:flex;align-items:center;gap:8px">'+
-          '<label style="font-size:12px;font-weight:600;color:var(--t2);white-space:nowrap">From:</label>'+
-          '<input type="date" class="date-inp" id="my-task-from" value="'+S.myTaskFilters.fromDate+'" style="width:140px">'+
+      '<div style="display:flex;align-items:center;gap:8px;margin-left:auto">'+
+        '<div style="display:flex;align-items:center;gap:6px">'+
+          '<label style="font-size:13px;font-weight:600;color:var(--t2);white-space:nowrap">From:</label>'+
+          '<input type="date" id="my-task-from" value="'+S.myTaskFilters.fromDate+'" style="height:38px;padding:0 12px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;width:150px;outline:none">'+
         '</div>'+
-        '<div style="display:flex;align-items:center;gap:8px">'+
-          '<label style="font-size:12px;font-weight:600;color:var(--t2);white-space:nowrap">To:</label>'+
-          '<input type="date" class="date-inp" id="my-task-to" value="'+S.myTaskFilters.toDate+'" style="width:140px">'+
+        '<div style="display:flex;align-items:center;gap:6px">'+
+          '<label style="font-size:13px;font-weight:600;color:var(--t2);white-space:nowrap">To:</label>'+
+          '<input type="date" id="my-task-to" value="'+S.myTaskFilters.toDate+'" style="height:38px;padding:0 12px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;width:150px;outline:none">'+
         '</div>'+
-        '<select id="my-task-priority" class="msel" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:6px;font-size:13px">'+
+        '<select id="my-task-priority" style="height:38px;padding:0 12px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;min-width:130px;outline:none;cursor:pointer;background:white">'+
           '<option value="all"'+(S.myTaskFilters.priority==='all'?' selected':'')+'>All Priority</option>'+
           '<option value="High"'+(S.myTaskFilters.priority==='High'?' selected':'')+'>High</option>'+
           '<option value="Medium"'+(S.myTaskFilters.priority==='Medium'?' selected':'')+'>Medium</option>'+
           '<option value="Low"'+(S.myTaskFilters.priority==='Low'?' selected':'')+'>Low</option>'+
         '</select>'+
-        '<select id="my-task-status" class="msel" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:6px;font-size:13px">'+
+        '<select id="my-task-status" style="height:38px;padding:0 12px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;min-width:130px;outline:none;cursor:pointer;background:white">'+
           '<option value="all"'+(S.myTaskFilters.status==='all'?' selected':'')+'>All Status</option>'+
           '<option value="Pending"'+(S.myTaskFilters.status==='Pending'?' selected':'')+'>Pending</option>'+
           '<option value="Done"'+(S.myTaskFilters.status==='Done'?' selected':'')+'>Done</option>'+
           '<option value="Approved"'+(S.myTaskFilters.status==='Approved'?' selected':'')+'>Approved</option>'+
           '<option value="Rejected"'+(S.myTaskFilters.status==='Rejected'?' selected':'')+'>Rejected</option>'+
         '</select>'+
-        '<button id="search-tasks-btn" class="btn" style="background:#3b82f6;color:#ffffff;padding:8px 16px;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap">'+
+        '<button id="search-tasks-btn" style="height:38px;background:#3b82f6;color:#ffffff;padding:0 16px;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap">'+
           '<svg style="width:16px;height:16px" fill="none" stroke="currentColor" viewBox="0 0 24 24">'+
             '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>'+
           '</svg>'+
           'Search'+
         '</button>'+
-        (TASKS_FILTER_ACTIVE?'<button id="clear-filter-btn" class="btn" style="background:#64748b;color:#ffffff;padding:8px 16px;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;margin-left:8px">'+
-          '<svg style="width:16px;height:16px" fill="none" stroke="currentColor" viewBox="0 0 24 24">'+
-            '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>'+
-          '</svg>'+
-          'Reset to Last Week'+
-        '</button>':'')+
-        '<button id="add-my-task-btn" class="btn" style="background:#14b8a6;color:#ffffff;padding:8px 16px;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;margin-left:8px">'+
+        '<button id="add-my-task-btn" style="height:38px;background:#14b8a6;color:#ffffff;padding:0 16px;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap">'+
           '<svg style="width:16px;height:16px" fill="none" stroke="currentColor" viewBox="0 0 24 24">'+
             '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>'+
           '</svg>'+
@@ -1793,21 +1749,7 @@ function showMyTasks(){
     };
   }
 
-  // Clear filter button - reload with default 1-week filter
-  var clearFilterBtn=el('clear-filter-btn');
-  if(clearFilterBtn){
-    clearFilterBtn.onclick=function(){
-      // Reset to default 1-week filter
-      S.myTaskFilters.fromDate=relDate(-7);
-      S.myTaskFilters.toDate=_today;
-      S.myTaskFilters.priority='all';
-      S.myTaskFilters.status='all';
-
-      // Reload with default filter
-      loadTasksWithDateFilter(S.myTaskFilters.fromDate, S.myTaskFilters.toDate, 'all', 'all');
-      toast('Filter reset - showing last 7 days','s');
-    };
-  }
+  // Clear filter button removed - all filtering now done via backend
 
   // Bind Add Task button
   var addTaskBtn=el('add-my-task-btn');
@@ -2538,19 +2480,19 @@ function loadTasksWithDateFilter(fromDate, toDate, priority, status){
     return r.json();
   }).then(function(response){
     if(response&&response.success&&response.data){
-      // CRITICAL FIX: Only update filtered view, NOT the main TASKS array
-      TASKS_FILTERED=response.data;
-      TASKS_FILTER_ACTIVE=true;
+      // Replace main TASKS array with filtered data from backend
+      TASKS.length=0;
+      response.data.forEach(function(t){TASKS.push(t);});
 
-      // Update TID based on filtered tasks
-      if(TASKS_FILTERED.length>0){
-        var maxId=Math.max.apply(null,TASKS_FILTERED.map(function(t){return t.id||0;}));
+      // Update TID based on loaded tasks
+      if(TASKS.length>0){
+        var maxId=Math.max.apply(null,TASKS.map(function(t){return t.id||0;}));
         if(maxId>TID){
           TID=maxId;
         }
       }
 
-      console.log('Tasks loaded with filter. Filtered:',TASKS_FILTERED.length,'Total in TASKS:',TASKS.length);
+      console.log('Tasks loaded from backend:',TASKS.length);
       toast('Tasks loaded successfully','s');
       render();
     }
@@ -2956,6 +2898,54 @@ function openUserManagementModal() {
   }
 }
 
+function loadRolesAndDepartments() {
+  return fetch('/admin/users/metadata', {
+    method: 'GET',
+    credentials: 'same-origin',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+    }
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    if (data.success) {
+      // Populate role dropdown
+      var roleSelect = document.getElementById('userRole');
+      if (roleSelect && data.roles) {
+        var currentValue = roleSelect.value;
+        roleSelect.innerHTML = '<option value="">Select Role</option>';
+        data.roles.forEach(function(role) {
+          var option = document.createElement('option');
+          option.value = role;
+          option.textContent = role;
+          if (role === currentValue) option.selected = true;
+          roleSelect.appendChild(option);
+        });
+      }
+
+      // Populate department dropdown
+      var deptSelect = document.getElementById('userDepartment');
+      if (deptSelect && data.departments) {
+        var currentDeptValue = deptSelect.value;
+        deptSelect.innerHTML = '<option value="">Select Department</option>';
+        data.departments.forEach(function(dept) {
+          var option = document.createElement('option');
+          option.value = dept;
+          option.textContent = dept;
+          if (dept === currentDeptValue) option.selected = true;
+          deptSelect.appendChild(option);
+        });
+      }
+    }
+    return data;
+  })
+  .catch(function(e) {
+    console.error('Failed to load roles and departments:', e);
+    throw e;
+  });
+}
+
 function closeUserManagementModal() {
   var modal = document.getElementById('userManagementModal');
   if (modal) {
@@ -3229,23 +3219,16 @@ function editUser(userId) {
           document.getElementById('passwordOptional').style.display = 'inline';
           document.getElementById('submitUserBtnText').textContent = 'Update User';
 
-          // Handle role - check if it's a predefined role or custom
+          // Set role value - it will be in the dropdown since we loaded all existing roles
           var roleSelect = document.getElementById('userRole');
-          var predefinedRoles = ['Developer', 'Designer', 'Manager', 'Analyst', 'Tester', 'Engineer', 'Architect', 'Administrator'];
-
-          if (predefinedRoles.indexOf(user.role) !== -1) {
-            roleSelect.value = user.role;
-          } else {
-            // Custom role
-            roleSelect.value = 'Other';
-            document.getElementById('userRoleCustom').value = user.role;
-            document.getElementById('userRoleCustomWrapper').style.display = 'block';
+          if (roleSelect) {
+            roleSelect.value = user.role || '';
           }
 
           // Scroll to top of form
           var mdBody = document.querySelector('.md-body');
           if (mdBody) mdBody.scrollTop = 0;
-        }, 100);
+        }, 200);
       }
     }
   })

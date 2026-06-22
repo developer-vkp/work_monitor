@@ -29,7 +29,7 @@
       <div class="dropdown-user-info">
         <div class="dropdown-name"></div>
         <div class="dropdown-email"></div>
-        <span class="dropdown-role-badge">ADMINISTRATOR</span>
+        <span class="dropdown-role-badge">{{ strtoupper(Auth::user()->role ?? 'USER') }}</span>
       </div>
     </div>
   </div>
@@ -40,6 +40,7 @@
       </svg>
       <span class="dropdown-item-text">My Profile</span>
     </button>
+    @if(in_array(strtolower(Auth::user()->role ?? 'user'), ['admin', 'administrator']))
     <button class="dropdown-item" onclick="openUserManagementModal()">
       <svg style="width:18px;height:18px" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
@@ -47,6 +48,7 @@
       <span class="dropdown-item-text">User Management</span>
     </button>
     <div class="dropdown-divider"></div>
+    @endif
     <form method="POST" action="{{ route('admin.logout') }}" style="margin:0;padding:0">
       @csrf
       <button type="submit" class="dropdown-item logout">
@@ -159,7 +161,7 @@
             <select id="userRole" name="role" required style="width:100%;padding:10px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:14px;color:#1f2937;background:#f9fafb;outline:none;cursor:pointer">
               <option value="">Select Role</option>
               <option value="Admin">Admin</option>
-              <option value="User">User</option>
+              <option value="User" selected>User</option>
             </select>
           </div>
           <div>
@@ -167,7 +169,7 @@
             <select id="userDepartment" name="department" required style="width:100%;padding:10px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:14px;color:#1f2937;background:#f9fafb;outline:none;cursor:pointer">
               <option value="">Select Department</option>
               <option value="Admin">Admin</option>
-              <option value="Support">Support</option>
+              <option value="Support" selected>Support</option>
             </select>
           </div>
           <div style="grid-column:1/-1">
@@ -225,11 +227,11 @@
 // Laravel Auth User Data - defined inline to access Blade variables
 var AUTH_USER = {
   id: '{{ Auth::user()->id }}',
-  name: '{{ Auth::user()->name ?? "Admin" }}',
+  name: '{{ Auth::user()->name ?? "User" }}',
   email: '{{ Auth::user()->email }}',
-  role: '{{ Auth::user()->role ?? "admin" }}',
+  role: '{{ Auth::user()->role ?? "User" }}',
   initials: '{{ strtoupper(substr(Auth::user()->name ?? Auth::user()->email, 0, 2)) }}',
-  isAdmin: {{ in_array(strtolower(Auth::user()->role ?? 'admin'), ['admin', 'administrator']) ? 'true' : 'false' }}
+  isAdmin: {{ in_array(strtolower(Auth::user()->role ?? 'user'), ['admin', 'administrator']) ? 'true' : 'false' }}
 };
 </script>
 <!-- SheetJS library for Excel parsing -->

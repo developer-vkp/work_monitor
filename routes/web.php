@@ -22,6 +22,7 @@ Route::middleware('auth')->group(function () {
 
     // User Management
     Route::get('/admin/users', [UserController::class, 'index'])->name('admin.users.index');
+    Route::get('/admin/users/metadata', [UserController::class, 'getMetadata'])->name('admin.users.metadata');
     Route::get('/admin/users/template/download', [UserController::class, 'downloadTemplate'])->name('admin.users.template');
     Route::post('/admin/users/create', [UserController::class, 'store'])->name('admin.users.create');
     Route::post('/admin/users/import-excel', [UserController::class, 'importExcel'])->name('admin.users.import-excel');

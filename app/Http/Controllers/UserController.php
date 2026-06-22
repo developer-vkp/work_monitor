@@ -659,4 +659,37 @@ class UserController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Get all unique roles and departments from users table
+     */
+    public function getMetadata()
+    {
+        try {
+            $roles = User::whereNotNull('role')
+                ->distinct()
+                ->pluck('role')
+                ->sort()
+                ->values()
+                ->toArray();
+
+            $departments = User::whereNotNull('department')
+                ->distinct()
+                ->pluck('department')
+                ->sort()
+                ->values()
+                ->toArray();
+
+            return response()->json([
+                'success' => true,
+                'roles' => $roles,
+                'departments' => $departments,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to fetch metadata: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
 }
