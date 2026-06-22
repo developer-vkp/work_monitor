@@ -1527,6 +1527,10 @@ function showMyTasks(){
       priority:'all',
       status:'all'
     };
+
+    // On first load, automatically apply default 1-week filter
+    loadTasksWithDateFilter(S.myTaskFilters.fromDate, S.myTaskFilters.toDate, 'all', 'all');
+    return; // Exit here, loadTasksWithDateFilter will call render() which calls showMyTasks() again
   }
 
   var allMyTasks=getTasksForDisplay().filter(function(t){
@@ -1580,11 +1584,13 @@ function showMyTasks(){
     S.myTasksCollapsed={};
   }
 
+  var filterInfo=TASKS_FILTER_ACTIVE?'Showing: '+S.myTaskFilters.fromDate+' to '+S.myTaskFilters.toDate:'Tasks assigned to you';
+
   var html='<div class="dash">'+
     '<div class="sec-h">'+
       '<div>'+
         '<div class="sec-title">My Tasks</div>'+
-        '<div class="sec-sub">Tasks assigned to you</div>'+
+        '<div class="sec-sub">'+filterInfo+'</div>'+
       '</div>'+
       '<div style="display:flex;align-items:center;gap:12px;margin-left:auto">'+
         '<div style="display:flex;align-items:center;gap:8px">'+
@@ -1616,9 +1622,9 @@ function showMyTasks(){
         '</button>'+
         (TASKS_FILTER_ACTIVE?'<button id="clear-filter-btn" class="btn" style="background:#64748b;color:#ffffff;padding:8px 16px;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;margin-left:8px">'+
           '<svg style="width:16px;height:16px" fill="none" stroke="currentColor" viewBox="0 0 24 24">'+
-            '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>'+
+            '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>'+
           '</svg>'+
-          'Clear Filter'+
+          'Reset to Last Week'+
         '</button>':'')+
         '<button id="add-my-task-btn" class="btn" style="background:#14b8a6;color:#ffffff;padding:8px 16px;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;margin-left:8px">'+
           '<svg style="width:16px;height:16px" fill="none" stroke="currentColor" viewBox="0 0 24 24">'+
@@ -1787,14 +1793,19 @@ function showMyTasks(){
     };
   }
 
-  // Clear filter button
+  // Clear filter button - reload with default 1-week filter
   var clearFilterBtn=el('clear-filter-btn');
   if(clearFilterBtn){
     clearFilterBtn.onclick=function(){
-      TASKS_FILTER_ACTIVE=false;
-      TASKS_FILTERED=[];
-      toast('Filter cleared - showing all tasks','s');
-      showMyTasks();
+      // Reset to default 1-week filter
+      S.myTaskFilters.fromDate=relDate(-7);
+      S.myTaskFilters.toDate=_today;
+      S.myTaskFilters.priority='all';
+      S.myTaskFilters.status='all';
+
+      // Reload with default filter
+      loadTasksWithDateFilter(S.myTaskFilters.fromDate, S.myTaskFilters.toDate, 'all', 'all');
+      toast('Filter reset - showing last 7 days','s');
     };
   }
 
@@ -2531,6 +2542,14 @@ function loadTasksWithDateFilter(fromDate, toDate, priority, status){
       TASKS_FILTERED=response.data;
       TASKS_FILTER_ACTIVE=true;
 
+      // Update TID based on filtered tasks
+      if(TASKS_FILTERED.length>0){
+        var maxId=Math.max.apply(null,TASKS_FILTERED.map(function(t){return t.id||0;}));
+        if(maxId>TID){
+          TID=maxId;
+        }
+      }
+
       console.log('Tasks loaded with filter. Filtered:',TASKS_FILTERED.length,'Total in TASKS:',TASKS.length);
       toast('Tasks loaded successfully','s');
       render();
@@ -2598,36 +2617,43 @@ function restoreData(){
     }
   }).catch(function(e){console.error('User load error:',e);});
 
-  // Load tasks data from database
-  fetch('/api/tasks',{
-    method:'GET',
-    credentials:'same-origin',
-    headers:{'Content-Type':'application/json'}
-  }).then(function(r){
-    if(!r.ok){
-      console.warn('Tasks API returned status:',r.status);
-      return null;
-    }
-    // Try to parse as JSON regardless of content-type header
-    return r.json().catch(function(){
-      console.warn('Tasks API response could not be parsed as JSON');
-      return null;
-    });
-  }).then(function(response){
-    if(response&&response.success&&response.data&&response.data.length){
-      TASKS.length=0;
-      response.data.forEach(function(t){TASKS.push(t);});
-
-      // Update TID to be max task ID + 1 to avoid conflicts
-      var maxId=Math.max.apply(null,TASKS.map(function(t){return t.id||0;}));
-      if(maxId>TID){
-        TID=maxId;
+  // Load tasks data from database (only for admin users)
+  // Non-admin users will load tasks via showMyTasks() with 1-week default filter
+  if(AUTH_USER.isAdmin){
+    fetch('/api/tasks',{
+      method:'GET',
+      credentials:'same-origin',
+      headers:{'Content-Type':'application/json'}
+    }).then(function(r){
+      if(!r.ok){
+        console.warn('Tasks API returned status:',r.status);
+        return null;
       }
+      // Try to parse as JSON regardless of content-type header
+      return r.json().catch(function(){
+        console.warn('Tasks API response could not be parsed as JSON');
+        return null;
+      });
+    }).then(function(response){
+      if(response&&response.success&&response.data&&response.data.length){
+        TASKS.length=0;
+        response.data.forEach(function(t){TASKS.push(t);});
 
-      restored=true;
-      render();
-    }
-  }).catch(function(e){console.error('Tasks load error:',e);});
+        // Update TID to be max task ID + 1 to avoid conflicts
+        var maxId=Math.max.apply(null,TASKS.map(function(t){return t.id||0;}));
+        if(maxId>TID){
+          TID=maxId;
+        }
+
+        restored=true;
+        render();
+      }
+    }).catch(function(e){console.error('Tasks load error:',e);});
+  }else{
+    // For non-admin users, tasks will be loaded by showMyTasks() with default filter
+    restored=true;
+    render();
+  }
 
   // Load activity feed from database
   fetch('/api/feed',{

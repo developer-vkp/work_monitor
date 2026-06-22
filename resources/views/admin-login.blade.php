@@ -455,6 +455,7 @@
                             required
                             autofocus
                         >
+                        
                         @error('email')
                             <span class="error-message">{{ $message }}</span>
                         @enderror
