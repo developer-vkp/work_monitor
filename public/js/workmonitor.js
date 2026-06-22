@@ -38,7 +38,8 @@ var S={role:AUTH_USER.role||'user',staffId:AUTH_USER.id||'',selStaff:null,selDat
   view:AUTH_USER.isAdmin?'overview':'tasks',  // Default view based on role
   boardFilter:'all',boardSearch:'',boardCollapsed:{},boardDp:null,
   showAddForm:false,taskFromDate:relDate(-7),taskToDate:_today,
-  overviewFromDate:_today,overviewToDate:_today,overviewSearch:''};
+  overviewFromDate:_today,overviewToDate:_today,overviewSearch:'',
+  overviewStaffFilter:'all'};
 var _newStaff={name:'',email:'',role:'',inst:''};
 var _editSD={};
 
@@ -140,6 +141,7 @@ function rLp(){
       }
       S.view=view;
       S.selStaff=null;
+      S.overviewStaffFilter='all';
       render();
       return;
     }
@@ -278,6 +280,18 @@ function rOverview(){
     var query=S.overviewSearch.toLowerCase();
     active=active.filter(function(s){return s.name.toLowerCase().indexOf(query)!==-1;});
   }
+  // Filter by staff who created/didn't create tasks today
+  if(S.overviewStaffFilter==='with-tasks'){
+    active=active.filter(function(s){
+      var staffTodayTasks=TASKS.filter(function(t){return t.staffId===s.id && t.date===_today;});
+      return staffTodayTasks.length>0;
+    });
+  }else if(S.overviewStaffFilter==='without-tasks'){
+    active=active.filter(function(s){
+      var staffTodayTasks=TASKS.filter(function(t){return t.staffId===s.id && t.date===_today;});
+      return staffTodayTasks.length===0;
+    });
+  }
   var thumbsHTML=active.map(function(s,i){
     var st2=tasksInRange(s.id,S.overviewFromDate,S.overviewToDate);
     var ap2=st2.filter(function(t){return t.action==='Approved';}).length;
@@ -310,7 +324,15 @@ function rOverview(){
   var feedHTML=FEED.slice(0,8).map(function(a){var c={'green':'var(--green)','red':'var(--red)','amber':'var(--amber)','blue':'var(--p3)'}[a.col]||'var(--p3)';return '<div class="feed-row"><div class="feed-dot" style="background:'+c+'"></div><div><div class="feed-txt">'+esc(a.msg)+'</div><div class="feed-tm">'+esc(a.time)+'</div></div></div>';}).join('');
 
   var dateRangeText=(S.overviewFromDate===S.overviewToDate)?fmtDate(S.overviewFromDate):(fmtDate(S.overviewFromDate)+' to '+fmtDate(S.overviewToDate));
-  var staffCountText=S.overviewSearch?'Showing '+active.length+' of '+activeStaff().length+' staff':'Click any card to review tasks';
+  var totalActiveStaff=activeStaff().length;
+  var staffCountText='Click any card to review tasks';
+  if(S.overviewStaffFilter==='with-tasks'){
+    staffCountText='Showing '+active.length+' staff who created tasks today';
+  }else if(S.overviewStaffFilter==='without-tasks'){
+    staffCountText='Showing '+active.length+' staff who did not create tasks today';
+  }else if(S.overviewSearch){
+    staffCountText='Showing '+active.length+' of '+totalActiveStaff+' staff';
+  }
 
   el('ct').innerHTML='<div class="dash fi">'+
     '<div class="kpi-row">'+kpiHTML+'</div>'+
@@ -321,7 +343,7 @@ function rOverview(){
 
   var tg=el('tg');if(tg)tg.addEventListener('click',function(e){var c=e.target.closest('.sthumb');if(!c)return;var s=active[parseInt(c.dataset.i)];if(s){S.selStaff=s.id;rOverview();}});
   // KPI card click handler
-  var kpiCards=document.querySelectorAll('[data-kpi-filter]');kpiCards.forEach(function(card){card.addEventListener('click',function(){var filter=this.dataset.kpiFilter;S.boardFilter=filter;S.view='board';S.selStaff=null;renderContent();rLp();rTabBar();});});
+  var kpiCards=document.querySelectorAll('[data-kpi-filter]');kpiCards.forEach(function(card){card.addEventListener('click',function(){var filter=this.dataset.kpiFilter;S.boardFilter=filter;S.view='board';S.selStaff=null;S.overviewStaffFilter='all';renderContent();rLp();rTabBar();});});
 }
 
 // ── USER MANAGEMENT VIEW ─────────────────────────────────────────
@@ -1152,10 +1174,9 @@ function rConsolBar(){
   var todaysTasks=TASKS.filter(function(t){return t.date===_today;});
   var todayTotal=todaysTasks.length;
 
-  // Calculate staff who haven't created tasks today
-  var staffNotCreated=active.filter(function(s){
-    var staffTodayTasks=TASKS.filter(function(t){return t.staffId===s.id && t.date===_today;});
-    return staffTodayTasks.length===0;
+  // Calculate tasks not submitted today (tasks that are not marked as Done)
+  var tasksNotSubmitted=todaysTasks.filter(function(t){
+    return t.status!=='Done';
   }).length;
 
   function tile(bg,clr,bdr,icon,label,val,clickAction){
@@ -1174,7 +1195,7 @@ function rConsolBar(){
     tile('rgba(8,145,178,.1)','var(--p2)','rgba(8,145,178,.25)','&#128101;','Total Staff',totalStaff,'users')+
     '<div class="consol-divider"></div>'+
     tile('var(--glight)','var(--green)','var(--gborder)','&#128203;','Today Total Tasks',todayTotal,'tasks')+
-    tile('var(--bg2)','var(--t2)','var(--border)','&#8854;','Tasks Not Created',staffNotCreated,'staff-not-created')+
+    tile('var(--alight)','var(--amber)','var(--aborder)','&#9888;','Tasks Not Submitted Today',tasksNotSubmitted,'tasks-pending')+
     '<div class="consol-divider"></div>'+
     '<div class="consol-right">'+
       '<div style="display:flex;align-items:center;gap:8px">'+
@@ -1234,8 +1255,20 @@ function rConsolBar(){
         rLp();
         rTabBar();
       }else if(action==='tasks'){
-        S.view='tasks';
-        S.selDate=_today;
+        S.view='overview';
+        S.selStaff=null;
+        S.overviewStaffFilter='with-tasks';
+        S.overviewFromDate=_today;
+        S.overviewToDate=_today;
+        renderContent();
+        rLp();
+        rTabBar();
+      }else if(action==='tasks-pending'){
+        S.view='overview';
+        S.selStaff=null;
+        S.overviewStaffFilter='without-tasks';
+        S.overviewFromDate=_today;
+        S.overviewToDate=_today;
         renderContent();
         rLp();
         rTabBar();
@@ -1250,6 +1283,7 @@ function rConsolBar(){
   if(cbarFrom){
     cbarFrom.onchange=function(){
       S.overviewFromDate=this.value;
+      S.overviewStaffFilter='all';
       render();
     };
   }
@@ -1257,6 +1291,7 @@ function rConsolBar(){
   if(cbarTo){
     cbarTo.onchange=function(){
       S.overviewToDate=this.value;
+      S.overviewStaffFilter='all';
       render();
     };
   }
@@ -1267,6 +1302,7 @@ function rConsolBar(){
     searchInput.oninput=function(e){
       var cursorPos=e.target.selectionStart;
       S.overviewSearch=e.target.value;
+      S.overviewStaffFilter='all';
       renderContent();
       // Restore focus and cursor position
       var newInput=el('overviewSearchInput');
