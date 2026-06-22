@@ -165,13 +165,33 @@ function rTb(){
         '</div>'+
       '</div>'+
       '<div id="save-ind" style="font-size:9px;font-weight:600;color:var(--green);opacity:0;transition:opacity .5s;letter-spacing:.04em;margin-left:12px">&#10003; AUTO-SAVED</div>'+
+      '<div id="last-refresh-time" style="font-size:10px;color:var(--t3);margin-left:12px;display:none"></div>'+
     '</div>'+
     '<div style="display:flex;align-items:center;gap:9px;margin-left:auto">'+
+      '<button id="manual-refresh-btn" title="Refresh data" style="width:36px;height:36px;border-radius:50%;background:var(--bg2);border:1.5px solid var(--border);color:var(--p2);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.2s">'+
+        '<svg style="width:18px;height:18px" fill="none" stroke="currentColor" viewBox="0 0 24 24">'+
+          '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>'+
+        '</svg>'+
+      '</button>'+
       '<div class="user-profile-trigger" id="user-profile-btn" style="cursor:pointer;position:relative">'+
         '<div class="ava ava-md" style="background:var(--grad);color:#fff">'+AUTH_USER.initials+'</div>'+
       '</div>'+
     '</div>';
   var profileBtn=el('user-profile-btn');if(profileBtn)profileBtn.onclick=function(e){toggleUserMenu(e);};
+
+  // Manual refresh button
+  var refreshBtn=el('manual-refresh-btn');
+  if(refreshBtn){
+    refreshBtn.onclick=function(e){
+      e.preventDefault();
+      // Add rotation animation
+      this.style.transform='rotate(360deg)';
+      setTimeout(function(){
+        refreshBtn.style.transform='rotate(0deg)';
+      }, 600);
+      loadData();
+    };
+  }
 
   // Sidebar toggle functionality
   var lpane = el('lp');
@@ -3448,8 +3468,155 @@ document.addEventListener('click', function(e) {
 });
 
 // ── AUTO-REFRESH ─────────────────────────────────────────────────
+// Show/hide refresh loader
+function showRefreshLoader() {
+  var loader = document.getElementById('refresh-loader');
+  if (!loader) {
+    // Create loader if it doesn't exist
+    loader = document.createElement('div');
+    loader.id = 'refresh-loader';
+    loader.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.4);z-index:99999;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(2px);';
+    loader.innerHTML =
+      '<div style="background:var(--bg);padding:30px 40px;border-radius:12px;box-shadow:0 10px 40px rgba(0,0,0,0.3);text-align:center;min-width:280px">'+
+        '<div style="width:50px;height:50px;border:4px solid var(--border);border-top-color:var(--p2);border-radius:50%;margin:0 auto 16px;animation:spin 1s linear infinite"></div>'+
+        '<div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:4px">Refreshing Data...</div>'+
+        '<div style="font-size:12px;color:var(--t3)">Getting latest updates</div>'+
+      '</div>';
+    document.body.appendChild(loader);
+
+    // Add spin animation if not already added
+    if (!document.getElementById('refresh-loader-style')) {
+      var style = document.createElement('style');
+      style.id = 'refresh-loader-style';
+      style.textContent = '@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }';
+      document.head.appendChild(style);
+    }
+  }
+  loader.style.display = 'flex';
+}
+
+function hideRefreshLoader() {
+  var loader = document.getElementById('refresh-loader');
+  if (loader) {
+    loader.style.display = 'none';
+  }
+}
+
+// Load fresh data from server
+function loadData() {
+  showRefreshLoader();
+  console.log('Auto-refreshing data...');
+
+  var csrfToken = document.querySelector('meta[name="csrf-token"]');
+  var token = csrfToken ? csrfToken.getAttribute('content') : '';
+
+  // Fetch all data in parallel
+  Promise.all([
+    // Fetch users (STAFF)
+    fetch('/admin/users', {
+      method: 'GET',
+      credentials: 'same-origin',
+      headers: {
+        'Accept': 'application/json',
+        'X-CSRF-TOKEN': token
+      }
+    }).then(function(r) { return r.json(); }),
+
+    // Fetch tasks
+    fetch('/api/tasks', {
+      method: 'GET',
+      credentials: 'same-origin',
+      headers: {
+        'Accept': 'application/json',
+        'X-CSRF-TOKEN': token
+      }
+    }).then(function(r) { return r.json(); }),
+
+    // Fetch activity feed
+    fetch('/api/feed', {
+      method: 'GET',
+      credentials: 'same-origin',
+      headers: {
+        'Accept': 'application/json',
+        'X-CSRF-TOKEN': token
+      }
+    }).then(function(r) { return r.json(); })
+  ])
+  .then(function(results) {
+    var usersData = results[0];
+    var tasksData = results[1];
+    var feedData = results[2];
+
+    // Update STAFF array
+    if (usersData && usersData.success && usersData.data) {
+      STAFF.length = 0;
+      usersData.data.forEach(function(user) {
+        STAFF.push({
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          role: user.role || 'User',
+          department: user.department || '',
+          inst: user.department || 'Other',
+          active: user.active !== false
+        });
+      });
+      console.log('Loaded ' + STAFF.length + ' users');
+    }
+
+    // Update TASKS array
+    if (tasksData && tasksData.success && tasksData.data) {
+      TASKS.length = 0;
+      tasksData.data.forEach(function(task) {
+        TASKS.push(task);
+      });
+      console.log('Loaded ' + TASKS.length + ' tasks');
+
+      // Update TID to be max task ID + 1
+      var maxId = Math.max.apply(null, TASKS.map(function(t) { return t.id || 0; }));
+      if (maxId > TID) {
+        TID = maxId;
+      }
+    }
+
+    // Update FEED array
+    if (feedData && feedData.success && feedData.data) {
+      FEED.length = 0;
+      feedData.data.forEach(function(item) {
+        FEED.push(item);
+      });
+      console.log('Loaded ' + FEED.length + ' feed items');
+    }
+
+    // Update today's date
+    _today = todayStr();
+
+    // Re-render the UI
+    render();
+
+    // Update last refresh time
+    var refreshTimeEl = document.getElementById('last-refresh-time');
+    if (refreshTimeEl) {
+      var now = new Date();
+      var timeStr = now.toLocaleTimeString('en-IN', {hour: '2-digit', minute: '2-digit'});
+      refreshTimeEl.textContent = 'Updated at ' + timeStr;
+      refreshTimeEl.style.display = 'block';
+    }
+
+    hideRefreshLoader();
+    console.log('Data refresh completed successfully');
+  })
+  .catch(function(error) {
+    console.error('Error refreshing data:', error);
+    hideRefreshLoader();
+    toast('Failed to refresh data. Please reload the page.', 'e');
+  });
+}
+
+// Load data on initial page load
+loadData();
+
 // Auto-refresh data every 5 minutes (300000 milliseconds)
 setInterval(function() {
-  console.log('Auto-refreshing data...');
   loadData();
 }, 300000);
