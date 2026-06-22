@@ -36,7 +36,9 @@ Route::middleware('auth')->group(function () {
     Route::prefix('api/tasks')->group(function () {
         Route::get('/', [TaskDataController::class, 'index'])->name('api.tasks.index');
         Route::get('/debug', [TaskDataController::class, 'debug'])->name('api.tasks.debug');
-        Route::post('/save', [TaskDataController::class, 'store'])->name('api.tasks.store');
+        Route::post('/', [TaskDataController::class, 'create'])->name('api.tasks.create');
+        Route::put('/{id}', [TaskDataController::class, 'update'])->name('api.tasks.update');
+        Route::post('/save', [TaskDataController::class, 'store'])->name('api.tasks.store'); // KEEP (deprecated)
         Route::delete('/{id}', [TaskDataController::class, 'destroy'])->name('api.tasks.destroy');
     });
 

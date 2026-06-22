@@ -286,6 +286,179 @@ class TaskDataController extends Controller
     }
 
     /**
+     * Create a new task
+     */
+    public function create(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'staffId' => 'required|exists:users,id',
+            'n' => 'required|integer',
+            'desc' => 'required|string',
+            'date' => 'required|date',
+            'status' => 'nullable|string',
+            'action' => 'nullable|string',
+            'priority' => 'nullable|string',
+            'remarks' => 'nullable|string',
+            'adminRem' => 'nullable|string',
+            'staffRem' => 'nullable|string',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        try {
+            $user = auth()->user();
+            $isAdmin = in_array(strtolower($user->role ?? ''), ['admin', 'administrator']);
+
+            // Authorization: Users can only create their own tasks, admins can create for anyone
+            if (!$isAdmin && $request->staffId != $user->id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized to create task for another user',
+                ], 403);
+            }
+
+            $task = Task::create([
+                'user_id' => $request->staffId,
+                'task_number' => $request->n,
+                'description' => $request->desc,
+                'task_date' => $request->date,
+                'status' => $request->status ?? 'Pending',
+                'action' => $request->action ?? null,
+                'priority' => $request->priority ?? 'Medium',
+                'remarks' => $request->remarks ?? null,
+                'admin_remarks' => $request->adminRem ?? null,
+                'staff_remarks' => $request->staffRem ?? null,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Task created successfully',
+                'data' => [
+                    'id' => $task->id,
+                    'staffId' => $task->user_id,
+                    'n' => $task->task_number,
+                    'desc' => $task->description,
+                    'date' => $task->task_date->format('Y-m-d'),
+                    'status' => $task->status,
+                    'action' => $task->action,
+                    'priority' => $task->priority,
+                    'remarks' => $task->remarks,
+                    'adminRem' => $task->admin_remarks,
+                    'staffRem' => $task->staff_remarks,
+                ],
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to create task: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Update an existing task
+     */
+    public function update(Request $request, $id)
+    {
+        $validator = Validator::make($request->all(), [
+            'staffId' => 'nullable|exists:users,id',
+            'n' => 'nullable|integer',
+            'desc' => 'nullable|string',
+            'date' => 'nullable|date',
+            'status' => 'nullable|string',
+            'action' => 'nullable|string',
+            'priority' => 'nullable|string',
+            'remarks' => 'nullable|string',
+            'adminRem' => 'nullable|string',
+            'staffRem' => 'nullable|string',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        try {
+            $task = Task::find($id);
+
+            if (!$task) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Task not found',
+                ], 404);
+            }
+
+            $user = auth()->user();
+            $isAdmin = in_array(strtolower($user->role ?? ''), ['admin', 'administrator']);
+
+            // Authorization: Users can only edit their own pending tasks, admins can edit any task
+            if (!$isAdmin) {
+                if ($task->user_id != $user->id) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Unauthorized to edit this task',
+                    ], 403);
+                }
+
+                // Users cannot edit approved/rejected tasks
+                if ($task->action && in_array($task->action, ['Approved', 'Rejected'])) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Cannot edit task that has been ' . strtolower($task->action),
+                    ], 403);
+                }
+            }
+
+            // Update only provided fields
+            $updateData = [];
+            if ($request->has('staffId')) $updateData['user_id'] = $request->staffId;
+            if ($request->has('n')) $updateData['task_number'] = $request->n;
+            if ($request->has('desc')) $updateData['description'] = $request->desc;
+            if ($request->has('date')) $updateData['task_date'] = $request->date;
+            if ($request->has('status')) $updateData['status'] = $request->status;
+            if ($request->has('action')) $updateData['action'] = $request->action;
+            if ($request->has('priority')) $updateData['priority'] = $request->priority;
+            if ($request->has('remarks')) $updateData['remarks'] = $request->remarks;
+            if ($request->has('adminRem')) $updateData['admin_remarks'] = $request->adminRem;
+            if ($request->has('staffRem')) $updateData['staff_remarks'] = $request->staffRem;
+
+            $task->update($updateData);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Task updated successfully',
+                'data' => [
+                    'id' => $task->id,
+                    'staffId' => $task->user_id,
+                    'n' => $task->task_number,
+                    'desc' => $task->description,
+                    'date' => $task->task_date->format('Y-m-d'),
+                    'status' => $task->status,
+                    'action' => $task->action,
+                    'priority' => $task->priority,
+                    'remarks' => $task->remarks,
+                    'adminRem' => $task->admin_remarks,
+                    'staffRem' => $task->staff_remarks,
+                ],
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update task: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
      * Delete a specific task
      */
     public function destroy($id)
@@ -300,14 +473,16 @@ class TaskDataController extends Controller
                 ], 404);
             }
 
-            // Optional: Add authorization check here
-            // For example, only allow admin or task owner to delete
-            // if (Auth::id() !== $task->user_id && !Auth::user()->isAdmin) {
-            //     return response()->json([
-            //         'success' => false,
-            //         'message' => 'Unauthorized to delete this task',
-            //     ], 403);
-            // }
+            $user = auth()->user();
+            $isAdmin = in_array(strtolower($user->role ?? ''), ['admin', 'administrator']);
+
+            // Authorization: Only admin or task owner can delete
+            if (!$isAdmin && $task->user_id != $user->id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized to delete this task',
+                ], 403);
+            }
 
             $task->delete();
 

@@ -16,7 +16,7 @@ function relDate(n){var d=new Date(Date.now()+n*864e5);return d.getFullYear()+'-
 
 var DIR={name:AUTH_USER.name,desig:'Administrator'};
 var STAFF=[];
-var TID=100;var TASKS=[];var FEED=[];
+var TID=100;var TASKS=[];var TASKS_FILTERED=[];var TASKS_FILTER_ACTIVE=false;var FEED=[];
 var _today=todayStr();
 function addFeed(msg,col){
   var feed={id:++TID,msg:msg,col:col||'blue',time:new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})};
@@ -54,11 +54,50 @@ function toast(msg,type){
 
 // ── HELPERS ──────────────────────────────────────────────────────
 function perf(sid){var ts=TASKS.filter(function(t){return t.staffId===sid&&t.action;});if(!ts.length)return 0;return Math.round(ts.filter(function(t){return t.action==='Approved';}).length/ts.length*100);}
-function tasksFor(sid,date){return TASKS.filter(function(t){return t.staffId===sid&&t.date===date;});}
+function tasksFor(sid,date){return getTasksForDisplay().filter(function(t){return t.staffId===sid&&t.date===date;});}
 function activeStaff(){return STAFF.filter(function(s){return s.active;});}
 function allStats(){
-  var ts=TASKS;var tot=ts.length;
+  var ts=getTasksForDisplay();var tot=ts.length;
   return{total:tot,ap:ts.filter(function(t){return t.action==='Approved';}).length,rj:ts.filter(function(t){return t.action==='Rejected';}).length,pn:ts.filter(function(t){return !t.action;}).length,dn:ts.filter(function(t){return t.status==='Done';}).length};
+}
+
+// State Management Helpers
+function getTasksForDisplay(){
+  return TASKS_FILTER_ACTIVE ? TASKS_FILTERED : TASKS;
+}
+
+function updateFilteredView(){
+  if(!TASKS_FILTER_ACTIVE)return;
+  // This will be populated when filters are applied
+  // For now, if filter is active but TASKS_FILTERED is empty, deactivate filter
+  if(TASKS_FILTERED.length===0){
+    TASKS_FILTER_ACTIVE=false;
+  }
+}
+
+function addTaskToArray(task){
+  TASKS.push(task);
+  updateFilteredView();
+}
+
+function updateTaskInArray(taskId,updates){
+  var task=TASKS.find(function(t){return t.id===taskId;});
+  if(task){
+    for(var key in updates){
+      if(updates.hasOwnProperty(key)){
+        task[key]=updates[key];
+      }
+    }
+    updateFilteredView();
+  }
+}
+
+function removeTaskFromArray(taskId){
+  var idx=TASKS.findIndex(function(t){return t.id===taskId;});
+  if(idx!==-1){
+    TASKS.splice(idx,1);
+    updateFilteredView();
+  }
 }
 
 // ── LEFT PANE ────────────────────────────────────────────────────
@@ -709,27 +748,33 @@ function bindDetailEvents(){
     var s=STAFF.find(function(x){return x.id===t.staffId;});
     var staffName=s?s.name:'Staff';
     if(act==='approve'){
-      t.action='Approved';
-      toast(staffName+' Task '+t.n+' Approved','s');
-      addFeed(staffName.split(' ')[0]+' Task '+t.n+' Approved','green');
-      schedSave();
-      renderContent();
-      bindDetailEvents();
+      updateTask(tid,{action:'Approved'},function(){
+        toast(staffName+' Task '+t.n+' Approved','s');
+        addFeed(staffName.split(' ')[0]+' Task '+t.n+' Approved','green');
+        renderContent();
+        bindDetailEvents();
+      },function(error){
+        toast('Failed to approve task: '+error,'e');
+      });
     }
     else if(act==='reject'){
-      t.action='Rejected';
-      toast(staffName+' Task '+t.n+' Rejected','e');
-      addFeed(staffName.split(' ')[0]+' Task '+t.n+' Rejected','red');
-      schedSave();
-      renderContent();
-      bindDetailEvents();
+      updateTask(tid,{action:'Rejected'},function(){
+        toast(staffName+' Task '+t.n+' Rejected','e');
+        addFeed(staffName.split(' ')[0]+' Task '+t.n+' Rejected','red');
+        renderContent();
+        bindDetailEvents();
+      },function(error){
+        toast('Failed to reject task: '+error,'e');
+      });
     }
     else if(act==='clear'){
-      t.action='';
-      toast('Cleared','i');
-      schedSave();
-      renderContent();
-      bindDetailEvents();
+      updateTask(tid,{action:''},function(){
+        toast('Cleared','i');
+        renderContent();
+        bindDetailEvents();
+      },function(error){
+        toast('Failed to clear action: '+error,'e');
+      });
     }
     else if(act==='savrem'){
       var ri=dr.querySelector('[data-remid="'+tid+'"]');
@@ -1484,12 +1529,12 @@ function showMyTasks(){
     };
   }
 
-  var allMyTasks=TASKS.filter(function(t){
+  var allMyTasks=getTasksForDisplay().filter(function(t){
     return t.staffId==AUTH_USER.id; // Use == to handle string/number type differences
   });
 
-  // Apply filters
-  var myTasks=allMyTasks.filter(function(t){
+  // Apply filters (only when not using backend filter)
+  var myTasks=TASKS_FILTER_ACTIVE?allMyTasks:allMyTasks.filter(function(t){
     // Date filter
     if(t.date<S.myTaskFilters.fromDate||t.date>S.myTaskFilters.toDate){
       return false;
@@ -1569,6 +1614,12 @@ function showMyTasks(){
           '</svg>'+
           'Search'+
         '</button>'+
+        (TASKS_FILTER_ACTIVE?'<button id="clear-filter-btn" class="btn" style="background:#64748b;color:#ffffff;padding:8px 16px;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;margin-left:8px">'+
+          '<svg style="width:16px;height:16px" fill="none" stroke="currentColor" viewBox="0 0 24 24">'+
+            '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>'+
+          '</svg>'+
+          'Clear Filter'+
+        '</button>':'')+
         '<button id="add-my-task-btn" class="btn" style="background:#14b8a6;color:#ffffff;padding:8px 16px;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;margin-left:8px">'+
           '<svg style="width:16px;height:16px" fill="none" stroke="currentColor" viewBox="0 0 24 24">'+
             '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>'+
@@ -1736,6 +1787,17 @@ function showMyTasks(){
     };
   }
 
+  // Clear filter button
+  var clearFilterBtn=el('clear-filter-btn');
+  if(clearFilterBtn){
+    clearFilterBtn.onclick=function(){
+      TASKS_FILTER_ACTIVE=false;
+      TASKS_FILTERED=[];
+      toast('Filter cleared - showing all tasks','s');
+      showMyTasks();
+    };
+  }
+
   // Bind Add Task button
   var addTaskBtn=el('add-my-task-btn');
   if(addTaskBtn){
@@ -1755,12 +1817,14 @@ function markTaskDone(taskId){
     'Mark Task as Done?',
     'Are you sure you want to mark "'+esc(task.desc)+'" as completed?',
     function(){
-      // On confirm
-      task.status='Done';
-      toast('Task marked as done!','s');
-      addFeed('Task completed: '+task.desc,'green');
-      schedSave();
-      showMyTasks(); // Refresh the view
+      // On confirm - use updateTask API
+      updateTask(taskId,{status:'Done'},function(){
+        toast('Task marked as done!','s');
+        addFeed('Task completed: '+task.desc,'green');
+        showMyTasks(); // Refresh the view
+      },function(error){
+        toast('Failed to mark task as done: '+error,'e');
+      });
     }
   );
 }
@@ -1834,17 +1898,20 @@ function editMyTask(taskId){
       return;
     }
 
-    // Update task
-    task.desc=desc.trim();
-    task.status=status;
-    task.priority=priority;
-    task.staffRem=staffRem.trim();
-
-    toast('Task updated successfully!','s');
-    addFeed('Task updated: '+task.desc,'blue');
-    schedSave();
-    closeOv();
-    showMyTasks(); // Refresh the view
+    // Update task using API
+    updateTask(taskId,{
+      desc:desc.trim(),
+      status:status,
+      priority:priority,
+      staffRem:staffRem.trim()
+    },function(){
+      toast('Task updated successfully!','s');
+      addFeed('Task updated: '+desc.trim(),'blue');
+      closeOv();
+      showMyTasks(); // Refresh the view
+    },function(error){
+      toast('Failed to update task: '+error,'e');
+    });
   };
 }
 
@@ -2221,10 +2288,10 @@ function openAssignTask(id){
   el('at-cl').onclick=closeOv;
   el('at-sv').onclick=function(){
     try{
-      var tasksAdded=0;
+      var tasksToCreate=[];
       var tasksByDate={};
 
-      // Loop through all 5 task inputs
+      // Loop through all 5 task inputs to collect tasks
       for(var i=1;i<=5;i++){
         var desc=(el('at-desc-'+i)||{}).value||'';
         if(!desc.trim())continue; // Skip empty tasks
@@ -2238,8 +2305,7 @@ function openAssignTask(id){
         }
         tasksByDate[date]++;
 
-        var newTask={
-          id:++TID,
+        tasksToCreate.push({
           staffId:s.id,
           date:date,
           n:tasksByDate[date],
@@ -2250,21 +2316,40 @@ function openAssignTask(id){
           staffRem:'',
           adminRem:'',
           priority:pri
-        };
-
-        console.log('Adding task:',newTask);
-        TASKS.push(newTask);
-        tasksAdded++;
+        });
       }
 
-      if(tasksAdded===0){toast('Please enter at least one task description','w');return;}
+      if(tasksToCreate.length===0){toast('Please enter at least one task description','w');return;}
 
-      console.log('Total tasks added:',tasksAdded,'Total TASKS:',TASKS.length);
-      toast(tasksAdded+' task'+(tasksAdded>1?'s':'')+' assigned to '+esc(s.name),'s');
-      addFeed(tasksAdded+' task'+(tasksAdded>1?'s':'')+' assigned to '+s.name,'blue');
-      schedSave();
-      closeOv();
-      render();
+      // Create tasks sequentially
+      var tasksCreated=0;
+      var totalTasks=tasksToCreate.length;
+
+      function createNextTask(index){
+        if(index>=tasksToCreate.length){
+          // All tasks created
+          console.log('Total tasks created:',tasksCreated);
+          toast(tasksCreated+' task'+(tasksCreated>1?'s':'')+' assigned to '+esc(s.name),'s');
+          addFeed(tasksCreated+' task'+(tasksCreated>1?'s':'')+' assigned to '+s.name,'blue');
+          closeOv();
+          render();
+          return;
+        }
+
+        var taskData=tasksToCreate[index];
+        createTask(taskData,function(createdTask){
+          tasksCreated++;
+          console.log('Task created:',createdTask);
+          createNextTask(index+1);
+        },function(error){
+          console.error('Failed to create task:',error);
+          toast('Failed to create task '+(index+1)+': '+error,'e');
+          // Continue with next task even if one fails
+          createNextTask(index+1);
+        });
+      }
+
+      createNextTask(0);
     }catch(e){
       console.error('Error adding tasks:',e);
       toast('Failed to add tasks. Please try again.','e');
@@ -2314,9 +2399,6 @@ function autoSave(){
     if(!data.success){
       console.error('Tasks save failed:',data.message,data);
       toast('Failed to save tasks: '+(data.message||'Unknown error'),'e');
-    }else{
-      // Reload tasks from database to sync IDs
-      reloadTasksFromDB();
     }
     _isSaving=false;
     if(ind){clearTimeout(ind._t);ind._t=setTimeout(function(){ind.style.opacity='0';},1800);}
@@ -2331,6 +2413,53 @@ function autoSave(){
 }
 
 function schedSave(){clearTimeout(_saveTimer);_saveTimer=setTimeout(autoSave,800);}
+
+// Individual Task API Operations
+function createTask(taskData,onSuccess,onError){
+  fetch('/api/tasks',{
+    method:'POST',
+    credentials:'same-origin',
+    headers:{'Content-Type':'application/json','X-CSRF-TOKEN':document.querySelector('meta[name="csrf-token"]')?.content||''},
+    body:JSON.stringify(taskData)
+  }).then(function(r){
+    return r.json().then(function(data){return{status:r.status,data:data};});
+  }).then(function(result){
+    if(result.status===200&&result.data.success){
+      // Add task to TASKS array with backend-generated ID
+      addTaskToArray(result.data.data);
+      if(onSuccess)onSuccess(result.data.data);
+    }else{
+      console.error('Task create failed:',result.data.message);
+      if(onError)onError(result.data.message||'Failed to create task');
+    }
+  }).catch(function(e){
+    console.error('Task create error:',e);
+    if(onError)onError('Error creating task');
+  });
+}
+
+function updateTask(taskId,updates,onSuccess,onError){
+  fetch('/api/tasks/'+taskId,{
+    method:'PUT',
+    credentials:'same-origin',
+    headers:{'Content-Type':'application/json','X-CSRF-TOKEN':document.querySelector('meta[name="csrf-token"]')?.content||''},
+    body:JSON.stringify(updates)
+  }).then(function(r){
+    return r.json().then(function(data){return{status:r.status,data:data};});
+  }).then(function(result){
+    if(result.status===200&&result.data.success){
+      // Update task in TASKS array
+      updateTaskInArray(taskId,result.data.data);
+      if(onSuccess)onSuccess(result.data.data);
+    }else{
+      console.error('Task update failed:',result.data.message);
+      if(onError)onError(result.data.message||'Failed to update task');
+    }
+  }).catch(function(e){
+    console.error('Task update error:',e);
+    if(onError)onError('Error updating task');
+  });
+}
 
 function reloadTasksFromDB(){
   fetch('/api/tasks',{
@@ -2398,16 +2527,11 @@ function loadTasksWithDateFilter(fromDate, toDate, priority, status){
     return r.json();
   }).then(function(response){
     if(response&&response.success&&response.data){
-      TASKS.length=0;
-      response.data.forEach(function(t){TASKS.push(t);});
+      // CRITICAL FIX: Only update filtered view, NOT the main TASKS array
+      TASKS_FILTERED=response.data;
+      TASKS_FILTER_ACTIVE=true;
 
-      // Update TID to be max task ID + 1
-      var maxId=Math.max.apply(null,TASKS.map(function(t){return t.id||0;}));
-      if(maxId>TID){
-        TID=maxId;
-      }
-
-      console.log('Tasks loaded with filter. Total:',TASKS.length);
+      console.log('Tasks loaded with filter. Filtered:',TASKS_FILTERED.length,'Total in TASKS:',TASKS.length);
       toast('Tasks loaded successfully','s');
       render();
     }
@@ -2582,26 +2706,38 @@ document.addEventListener('click',function(e){
     var s=STAFF.find(function(x){return x.id===t.staffId;});
     var staffName=s?s.name:'Staff';
     if(act==='ap'){
-      t.action='Approved';
-      toast(staffName+' Task '+t.n+' Approved','s');
-      addFeed(staffName.split(' ')[0]+' Task '+t.n+' Approved','green');
-      S.boardDp=null;
-      // Clear filter to show the approved task
-      if(S.boardFilter==='pending'){S.boardFilter='all';}
-      renderContent();
-      autoSave();
+      updateTask(tid,{action:'Approved'},function(){
+        toast(staffName+' Task '+t.n+' Approved','s');
+        addFeed(staffName.split(' ')[0]+' Task '+t.n+' Approved','green');
+        S.boardDp=null;
+        // Clear filter to show the approved task
+        if(S.boardFilter==='pending'){S.boardFilter='all';}
+        renderContent();
+      },function(error){
+        toast('Failed to approve task: '+error,'e');
+      });
     }
     else if(act==='rj'){
-      t.action='Rejected';
-      toast(staffName+' Task '+t.n+' Rejected','e');
-      addFeed(staffName.split(' ')[0]+' Task '+t.n+' Rejected','red');
-      S.boardDp=null;
-      // Clear filter to show the rejected task
-      if(S.boardFilter==='pending'){S.boardFilter='all';}
-      renderContent();
-      autoSave();
+      updateTask(tid,{action:'Rejected'},function(){
+        toast(staffName+' Task '+t.n+' Rejected','e');
+        addFeed(staffName.split(' ')[0]+' Task '+t.n+' Rejected','red');
+        S.boardDp=null;
+        // Clear filter to show the rejected task
+        if(S.boardFilter==='pending'){S.boardFilter='all';}
+        renderContent();
+      },function(error){
+        toast('Failed to reject task: '+error,'e');
+      });
     }
-    else if(act==='cl'){t.action='';S.boardDp=null;renderContent();toast('Cleared','i');autoSave();}
+    else if(act==='cl'){
+      updateTask(tid,{action:''},function(){
+        S.boardDp=null;
+        renderContent();
+        toast('Cleared','i');
+      },function(error){
+        toast('Failed to clear action: '+error,'e');
+      });
+    }
     else if(act==='rm'||act==='rv'){
       var sv=e.target.closest('[data-sid]');
       if(sv){S.selStaff=sv.dataset.sid;}else{S.selStaff=t.staffId;}
