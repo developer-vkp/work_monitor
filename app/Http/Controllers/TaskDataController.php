@@ -506,7 +506,7 @@ class TaskDataController extends Controller
     }
 
     /**
-     * Export task attendance report to Excel format
+     * Export task attendance report to Excel format with date-wise breakdown
      */
     public function exportTaskAttendance(Request $request)
     {
@@ -526,12 +526,23 @@ class TaskDataController extends Controller
             $fromDate = $request->input('from_date');
             $toDate = $request->input('to_date');
 
+            // Generate array of dates between from and to
+            $dates = [];
+            if ($fromDate && $toDate) {
+                $currentDate = new \DateTime($fromDate);
+                $endDate = new \DateTime($toDate);
+                while ($currentDate <= $endDate) {
+                    $dates[] = $currentDate->format('Y-m-d');
+                    $currentDate->modify('+1 day');
+                }
+            }
+
             // Create new Spreadsheet
             $spreadsheet = new Spreadsheet();
             $sheet = $spreadsheet->getActiveSheet();
             $sheet->setTitle('Task Attendance');
 
-            // Set header row
+            // Build header row with user info columns + date columns
             $headers = [
                 'S.No',
                 'Staff ID',
@@ -539,10 +550,19 @@ class TaskDataController extends Controller
                 'Email',
                 'Role/Designation',
                 'Department',
-                'Date Range',
-                'Attendance Status',
-                'Total Tasks'
             ];
+
+            // Add date headers
+            foreach ($dates as $date) {
+                $headers[] = date('d-M-Y', strtotime($date));
+            }
+
+            // Add summary columns
+            $headers[] = 'Total Tasks';
+            $headers[] = 'Total Days Updated';
+            $headers[] = 'Total Days Not Updated';
+            $headers[] = 'Attendance %';
+
             $sheet->fromArray($headers, null, 'A1');
 
             // Style header row
@@ -550,7 +570,7 @@ class TaskDataController extends Controller
                 'font' => [
                     'bold' => true,
                     'color' => ['rgb' => 'FFFFFF'],
-                    'size' => 12,
+                    'size' => 11,
                 ],
                 'fill' => [
                     'fillType' => Fill::FILL_SOLID,
@@ -567,7 +587,9 @@ class TaskDataController extends Controller
                     ],
                 ],
             ];
-            $sheet->getStyle('A1:I1')->applyFromArray($headerStyle);
+
+            $lastColumn = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(count($headers));
+            $sheet->getStyle('A1:' . $lastColumn . '1')->applyFromArray($headerStyle);
 
             // Get all users
             $users = User::orderBy('name', 'asc')->get();
@@ -576,64 +598,97 @@ class TaskDataController extends Controller
             $serialNo = 1;
 
             foreach ($users as $staffUser) {
-                // Get tasks for this user within date range
-                $tasksQuery = Task::where('user_id', $staffUser->id);
-
-                if ($fromDate && $toDate) {
-                    $tasksQuery->whereBetween('task_date', [$fromDate, $toDate]);
-                }
-
-                $taskCount = $tasksQuery->count();
-
-                // Determine attendance status
-                $attendanceStatus = $taskCount > 0 ? 'Updated' : 'Not Updated';
-
-                $dateRangeText = ($fromDate && $toDate) ? "$fromDate to $toDate" : 'All Dates';
-
-                $data = [
+                // Build row data starting with user info
+                $rowData = [
                     $serialNo,
                     $staffUser->id,
                     $staffUser->name,
                     $staffUser->email,
                     $staffUser->role ?? 'User',
                     $staffUser->department ?? 'N/A',
-                    $dateRangeText,
-                    $attendanceStatus,
-                    $taskCount
                 ];
-                $sheet->fromArray($data, null, 'A' . $rowIndex);
 
-                // Color code the attendance status
-                $statusCell = 'H' . $rowIndex;
-                if ($attendanceStatus === 'Updated') {
-                    $sheet->getStyle($statusCell)->applyFromArray([
-                        'fill' => [
-                            'fillType' => Fill::FILL_SOLID,
-                            'startColor' => ['rgb' => 'D4EDDA'], // Light green
-                        ],
-                        'font' => [
-                            'color' => ['rgb' => '155724'],
-                            'bold' => true,
-                        ],
-                    ]);
-                } else {
-                    $sheet->getStyle($statusCell)->applyFromArray([
-                        'fill' => [
-                            'fillType' => Fill::FILL_SOLID,
-                            'startColor' => ['rgb' => 'F8D7DA'], // Light red
-                        ],
-                        'font' => [
-                            'color' => ['rgb' => '721C24'],
-                            'bold' => true,
-                        ],
-                    ]);
+                $daysUpdated = 0;
+                $daysNotUpdated = 0;
+                $totalTasksCount = 0;
+
+                // For each date, check if user has tasks
+                $dateColumnIndex = 7; // Starting column for dates (G = 7)
+                foreach ($dates as $date) {
+                    $taskCount = Task::where('user_id', $staffUser->id)
+                        ->whereDate('task_date', $date)
+                        ->count();
+
+                    $status = $taskCount > 0 ? 'Updated' : 'Not Updated';
+                    $rowData[] = $status;
+
+                    if ($taskCount > 0) {
+                        $daysUpdated++;
+                        $totalTasksCount += $taskCount;
+                    } else {
+                        $daysNotUpdated++;
+                    }
+
+                    $dateColumnIndex++;
+                }
+
+                // Add summary data
+                $totalDays = count($dates);
+                $attendancePercent = $totalDays > 0 ? round(($daysUpdated / $totalDays) * 100, 2) : 0;
+                $rowData[] = $totalTasksCount;
+                $rowData[] = $daysUpdated;
+                $rowData[] = $daysNotUpdated;
+                $rowData[] = $attendancePercent . '%';
+
+                $sheet->fromArray($rowData, null, 'A' . $rowIndex);
+
+                // Apply color coding to date columns
+                $dateColumnIndex = 7; // Starting column for dates
+                foreach ($dates as $date) {
+                    $columnLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($dateColumnIndex);
+                    $cellAddress = $columnLetter . $rowIndex;
+                    $cellValue = $sheet->getCell($cellAddress)->getValue();
+
+                    if ($cellValue === 'Updated') {
+                        $sheet->getStyle($cellAddress)->applyFromArray([
+                            'fill' => [
+                                'fillType' => Fill::FILL_SOLID,
+                                'startColor' => ['rgb' => 'D4EDDA'], // Light green
+                            ],
+                            'font' => [
+                                'color' => ['rgb' => '155724'],
+                                'bold' => true,
+                                'size' => 9,
+                            ],
+                            'alignment' => [
+                                'horizontal' => Alignment::HORIZONTAL_CENTER,
+                            ],
+                        ]);
+                    } else {
+                        $sheet->getStyle($cellAddress)->applyFromArray([
+                            'fill' => [
+                                'fillType' => Fill::FILL_SOLID,
+                                'startColor' => ['rgb' => 'F8D7DA'], // Light red
+                            ],
+                            'font' => [
+                                'color' => ['rgb' => '721C24'],
+                                'bold' => true,
+                                'size' => 9,
+                            ],
+                            'alignment' => [
+                                'horizontal' => Alignment::HORIZONTAL_CENTER,
+                            ],
+                        ]);
+                    }
+
+                    $dateColumnIndex++;
                 }
 
                 $rowIndex++;
                 $serialNo++;
             }
 
-            // Style data rows
+            // Style all data rows
             if ($rowIndex > 2) {
                 $dataStyle = [
                     'borders' => [
@@ -646,13 +701,16 @@ class TaskDataController extends Controller
                         'vertical' => Alignment::VERTICAL_CENTER,
                     ],
                 ];
-                $sheet->getStyle('A2:I' . ($rowIndex - 1))->applyFromArray($dataStyle);
+                $sheet->getStyle('A2:' . $lastColumn . ($rowIndex - 1))->applyFromArray($dataStyle);
 
                 // Center align specific columns
                 $sheet->getStyle('A2:A' . ($rowIndex - 1))->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER); // S.No
                 $sheet->getStyle('B2:B' . ($rowIndex - 1))->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER); // Staff ID
-                $sheet->getStyle('H2:H' . ($rowIndex - 1))->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER); // Attendance Status
-                $sheet->getStyle('I2:I' . ($rowIndex - 1))->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER); // Total Tasks
+
+                // Center align summary columns (last 4 columns)
+                $summaryStartCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(count($headers) - 3);
+                $summaryEndCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(count($headers));
+                $sheet->getStyle($summaryStartCol . '2:' . $summaryEndCol . ($rowIndex - 1))->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
             }
 
             // Set column widths
@@ -662,12 +720,24 @@ class TaskDataController extends Controller
             $sheet->getColumnDimension('D')->setWidth(30);  // Email
             $sheet->getColumnDimension('E')->setWidth(20);  // Role
             $sheet->getColumnDimension('F')->setWidth(20);  // Department
-            $sheet->getColumnDimension('G')->setWidth(25);  // Date Range
-            $sheet->getColumnDimension('H')->setWidth(18);  // Attendance Status
-            $sheet->getColumnDimension('I')->setWidth(12);  // Total Tasks
+
+            // Set width for date columns
+            for ($i = 7; $i <= 6 + count($dates); $i++) {
+                $columnLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($i);
+                $sheet->getColumnDimension($columnLetter)->setWidth(14);
+            }
+
+            // Set width for summary columns (last 4 columns)
+            for ($i = count($headers) - 3; $i <= count($headers); $i++) {
+                $columnLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($i);
+                $sheet->getColumnDimension($columnLetter)->setWidth(16);
+            }
 
             // Set row height for header
             $sheet->getRowDimension(1)->setRowHeight(25);
+
+            // Freeze panes (freeze first 6 columns and first row)
+            $sheet->freezePane('G2');
 
             // Generate filename
             $dateRange = ($fromDate && $toDate) ? "{$fromDate}_to_{$toDate}" : date('Y-m-d');
