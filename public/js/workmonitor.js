@@ -1243,6 +1243,12 @@ function rConsolBar(){
             '</svg>'+
             'Excel'+
           '</button>'+
+          '<button class="download-dropdown-item" id="exp-task-attendance">'+
+            '<svg style="width:14px;height:14px" fill="none" stroke="currentColor" viewBox="0 0 24 24">'+
+              '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>'+
+            '</svg>'+
+            'Task Attendance (Excel)'+
+          '</button>'+
         '</div>'+
       '</div>'+
     '</div>';
@@ -1263,6 +1269,7 @@ function rConsolBar(){
   }
 
   var eXl=el('exp-xlsx');if(eXl)eXl.onclick=function(){exportReport('xlsx');if(downloadMenu)downloadMenu.classList.remove('show');};
+  var eTaskAtt=el('exp-task-attendance');if(eTaskAtt)eTaskAtt.onclick=function(){exportReport('task-attendance');if(downloadMenu)downloadMenu.classList.remove('show');};
 
   // Tile click handlers
   var tiles=document.querySelectorAll('.consol-stat[data-action]');
@@ -2698,6 +2705,24 @@ function exportReport(fmt){
 
     setTimeout(function(){
       toast('Excel report downloaded successfully','s');
+    }, 1000);
+  }else if(fmt==='task-attendance'){
+    // Export task attendance to Excel format
+    toast('Generating Task Attendance report...','i');
+
+    // Build URL with date range parameters
+    var url='/api/tasks/export-task-attendance?from_date='+encodeURIComponent(fromDate)+'&to_date='+encodeURIComponent(toDate);
+
+    // Create a temporary link and trigger download
+    var a=document.createElement('a');
+    a.href=url;
+    a.download='Task_Attendance_'+fromDate+'_to_'+toDate+'.xlsx';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+
+    setTimeout(function(){
+      toast('Task Attendance report downloaded successfully','s');
     }, 1000);
   }
 }

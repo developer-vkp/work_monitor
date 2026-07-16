@@ -506,6 +506,198 @@ class TaskDataController extends Controller
     }
 
     /**
+     * Export task attendance report to Excel format
+     */
+    public function exportTaskAttendance(Request $request)
+    {
+        try {
+            $user = auth()->user();
+            $isAdmin = in_array(strtolower($user->role ?? ''), ['admin', 'administrator']);
+
+            // Only admins can access this report
+            if (!$isAdmin) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized access'
+                ], 403);
+            }
+
+            // Get date range from request
+            $fromDate = $request->input('from_date');
+            $toDate = $request->input('to_date');
+
+            // Create new Spreadsheet
+            $spreadsheet = new Spreadsheet();
+            $sheet = $spreadsheet->getActiveSheet();
+            $sheet->setTitle('Task Attendance');
+
+            // Set header row
+            $headers = [
+                'S.No',
+                'Staff ID',
+                'Staff Name',
+                'Email',
+                'Role/Designation',
+                'Department',
+                'Date Range',
+                'Attendance Status',
+                'Total Tasks'
+            ];
+            $sheet->fromArray($headers, null, 'A1');
+
+            // Style header row
+            $headerStyle = [
+                'font' => [
+                    'bold' => true,
+                    'color' => ['rgb' => 'FFFFFF'],
+                    'size' => 12,
+                ],
+                'fill' => [
+                    'fillType' => Fill::FILL_SOLID,
+                    'startColor' => ['rgb' => '3B82F6'],
+                ],
+                'alignment' => [
+                    'horizontal' => Alignment::HORIZONTAL_CENTER,
+                    'vertical' => Alignment::VERTICAL_CENTER,
+                ],
+                'borders' => [
+                    'allBorders' => [
+                        'borderStyle' => Border::BORDER_THIN,
+                        'color' => ['rgb' => '000000'],
+                    ],
+                ],
+            ];
+            $sheet->getStyle('A1:I1')->applyFromArray($headerStyle);
+
+            // Get all users
+            $users = User::orderBy('name', 'asc')->get();
+
+            $rowIndex = 2;
+            $serialNo = 1;
+
+            foreach ($users as $staffUser) {
+                // Get tasks for this user within date range
+                $tasksQuery = Task::where('user_id', $staffUser->id);
+
+                if ($fromDate && $toDate) {
+                    $tasksQuery->whereBetween('task_date', [$fromDate, $toDate]);
+                }
+
+                $taskCount = $tasksQuery->count();
+
+                // Determine attendance status
+                $attendanceStatus = $taskCount > 0 ? 'Updated' : 'Not Updated';
+
+                $dateRangeText = ($fromDate && $toDate) ? "$fromDate to $toDate" : 'All Dates';
+
+                $data = [
+                    $serialNo,
+                    $staffUser->id,
+                    $staffUser->name,
+                    $staffUser->email,
+                    $staffUser->role ?? 'User',
+                    $staffUser->department ?? 'N/A',
+                    $dateRangeText,
+                    $attendanceStatus,
+                    $taskCount
+                ];
+                $sheet->fromArray($data, null, 'A' . $rowIndex);
+
+                // Color code the attendance status
+                $statusCell = 'H' . $rowIndex;
+                if ($attendanceStatus === 'Updated') {
+                    $sheet->getStyle($statusCell)->applyFromArray([
+                        'fill' => [
+                            'fillType' => Fill::FILL_SOLID,
+                            'startColor' => ['rgb' => 'D4EDDA'], // Light green
+                        ],
+                        'font' => [
+                            'color' => ['rgb' => '155724'],
+                            'bold' => true,
+                        ],
+                    ]);
+                } else {
+                    $sheet->getStyle($statusCell)->applyFromArray([
+                        'fill' => [
+                            'fillType' => Fill::FILL_SOLID,
+                            'startColor' => ['rgb' => 'F8D7DA'], // Light red
+                        ],
+                        'font' => [
+                            'color' => ['rgb' => '721C24'],
+                            'bold' => true,
+                        ],
+                    ]);
+                }
+
+                $rowIndex++;
+                $serialNo++;
+            }
+
+            // Style data rows
+            if ($rowIndex > 2) {
+                $dataStyle = [
+                    'borders' => [
+                        'allBorders' => [
+                            'borderStyle' => Border::BORDER_THIN,
+                            'color' => ['rgb' => 'CCCCCC'],
+                        ],
+                    ],
+                    'alignment' => [
+                        'vertical' => Alignment::VERTICAL_CENTER,
+                    ],
+                ];
+                $sheet->getStyle('A2:I' . ($rowIndex - 1))->applyFromArray($dataStyle);
+
+                // Center align specific columns
+                $sheet->getStyle('A2:A' . ($rowIndex - 1))->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER); // S.No
+                $sheet->getStyle('B2:B' . ($rowIndex - 1))->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER); // Staff ID
+                $sheet->getStyle('H2:H' . ($rowIndex - 1))->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER); // Attendance Status
+                $sheet->getStyle('I2:I' . ($rowIndex - 1))->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER); // Total Tasks
+            }
+
+            // Set column widths
+            $sheet->getColumnDimension('A')->setWidth(8);   // S.No
+            $sheet->getColumnDimension('B')->setWidth(10);  // Staff ID
+            $sheet->getColumnDimension('C')->setWidth(25);  // Staff Name
+            $sheet->getColumnDimension('D')->setWidth(30);  // Email
+            $sheet->getColumnDimension('E')->setWidth(20);  // Role
+            $sheet->getColumnDimension('F')->setWidth(20);  // Department
+            $sheet->getColumnDimension('G')->setWidth(25);  // Date Range
+            $sheet->getColumnDimension('H')->setWidth(18);  // Attendance Status
+            $sheet->getColumnDimension('I')->setWidth(12);  // Total Tasks
+
+            // Set row height for header
+            $sheet->getRowDimension(1)->setRowHeight(25);
+
+            // Generate filename
+            $dateRange = ($fromDate && $toDate) ? "{$fromDate}_to_{$toDate}" : date('Y-m-d');
+            $filename = 'Task_Attendance_' . $dateRange . '.xlsx';
+
+            // Create writer and output
+            $writer = new Xlsx($spreadsheet);
+
+            // Set headers for download
+            header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+            header('Content-Disposition: attachment;filename="' . $filename . '"');
+            header('Cache-Control: max-age=0');
+            header('Cache-Control: max-age=1');
+            header('Expires: Mon, 26 Jul 1997 05:00:00 GMT');
+            header('Last-Modified: ' . gmdate('D, d M Y H:i:s') . ' GMT');
+            header('Cache-Control: cache, must-revalidate');
+            header('Pragma: public');
+
+            $writer->save('php://output');
+            exit;
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to export Task Attendance: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
      * Export tasks report to Excel format with all user details (one row per user)
      */
     public function exportExcel(Request $request)

@@ -38,6 +38,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/', [TaskDataController::class, 'index'])->name('api.tasks.index');
         Route::get('/debug', [TaskDataController::class, 'debug'])->name('api.tasks.debug');
         Route::get('/export-excel', [TaskDataController::class, 'exportExcel'])->name('api.tasks.export');
+        Route::get('/export-task-attendance', [TaskDataController::class, 'exportTaskAttendance'])->name('api.tasks.export-attendance');
         Route::post('/', [TaskDataController::class, 'create'])->name('api.tasks.create');
         Route::put('/{id}', [TaskDataController::class, 'update'])->name('api.tasks.update');
         Route::post('/save', [TaskDataController::class, 'store'])->name('api.tasks.store'); // KEEP (deprecated)
