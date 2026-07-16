@@ -3,10 +3,17 @@
 namespace App\Http\Controllers;
 
 use App\Models\Task;
+use App\Models\User;
 use App\Models\ActivityFeed;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Style\Font;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\Border;
 
 class TaskDataController extends Controller
 {
@@ -494,6 +501,214 @@ class TaskDataController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to delete task: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Export tasks report to Excel format with all user details (one row per user)
+     */
+    public function exportExcel(Request $request)
+    {
+        try {
+            $user = auth()->user();
+            $isAdmin = in_array(strtolower($user->role ?? ''), ['admin', 'administrator']);
+
+            // Get date range from request
+            $fromDate = $request->input('from_date');
+            $toDate = $request->input('to_date');
+
+            // Create new Spreadsheet
+            $spreadsheet = new Spreadsheet();
+            $sheet = $spreadsheet->getActiveSheet();
+            $sheet->setTitle('Work Monitor Report');
+
+            // Set header row
+            $headers = [
+                'Staff ID',
+                'Staff Name',
+                'Email',
+                'Role/Designation',
+                'Department',
+                'Date Range',
+                'Total Tasks',
+                'Completed',
+                'Pending',
+                'Approved',
+                'Rejected',
+                'All Tasks Details'
+            ];
+            $sheet->fromArray($headers, null, 'A1');
+
+            // Style header row
+            $headerStyle = [
+                'font' => [
+                    'bold' => true,
+                    'color' => ['rgb' => 'FFFFFF'],
+                    'size' => 12,
+                ],
+                'fill' => [
+                    'fillType' => Fill::FILL_SOLID,
+                    'startColor' => ['rgb' => '3B82F6'],
+                ],
+                'alignment' => [
+                    'horizontal' => Alignment::HORIZONTAL_CENTER,
+                    'vertical' => Alignment::VERTICAL_CENTER,
+                ],
+                'borders' => [
+                    'allBorders' => [
+                        'borderStyle' => Border::BORDER_THIN,
+                        'color' => ['rgb' => '000000'],
+                    ],
+                ],
+            ];
+            $sheet->getStyle('A1:L1')->applyFromArray($headerStyle);
+
+            // Get all users or just the current user based on role
+            if ($isAdmin) {
+                $users = User::orderBy('name', 'asc')->get();
+            } else {
+                $users = User::where('id', $user->id)->get();
+            }
+
+            $rowIndex = 2;
+
+            foreach ($users as $staffUser) {
+                // Get tasks for this user within date range
+                $tasksQuery = Task::where('user_id', $staffUser->id);
+
+                if ($fromDate && $toDate) {
+                    $tasksQuery->whereBetween('task_date', [$fromDate, $toDate]);
+                }
+
+                $tasks = $tasksQuery->orderBy('task_date', 'desc')
+                    ->orderBy('task_number', 'asc')
+                    ->get();
+
+                // Calculate statistics
+                $totalTasks = $tasks->count();
+                $completed = $tasks->where('status', 'Done')->count();
+                $approved = $tasks->where('action', 'Approved')->count();
+                $rejected = $tasks->where('action', 'Rejected')->count();
+                $pending = $totalTasks - $completed - $approved - $rejected;
+
+                // Build task details string (all tasks in one cell)
+                $taskDetails = '';
+                if ($tasks->isEmpty()) {
+                    $taskDetails = 'No tasks for this period';
+                } else {
+                    $taskDetailsList = [];
+                    foreach ($tasks as $index => $task) {
+                        // Determine task status
+                        $taskStatus = 'Pending';
+                        if ($task->status === 'Done') {
+                            $taskStatus = 'Completed';
+                        } elseif ($task->action === 'Approved') {
+                            $taskStatus = 'Approved';
+                        } elseif ($task->action === 'Rejected') {
+                            $taskStatus = 'Rejected';
+                        }
+
+                        $taskDetail = sprintf(
+                            "[%d] Date: %s | Task #%d\nDescription: %s\nStatus: %s | Priority: %s%s%s%s",
+                            $index + 1,
+                            $task->task_date->format('Y-m-d'),
+                            $task->task_number,
+                            $task->description,
+                            $taskStatus,
+                            $task->priority ?? 'Medium',
+                            $task->remarks ? "\nRemarks: " . $task->remarks : '',
+                            $task->admin_remarks ? "\nAdmin Remarks: " . $task->admin_remarks : '',
+                            $task->staff_remarks ? "\nStaff Remarks: " . $task->staff_remarks : ''
+                        );
+                        $taskDetailsList[] = $taskDetail;
+                    }
+                    $taskDetails = implode("\n\n" . str_repeat("-", 50) . "\n\n", $taskDetailsList);
+                }
+
+                $dateRangeText = ($fromDate && $toDate) ? "$fromDate to $toDate" : 'All Dates';
+
+                $data = [
+                    $staffUser->id,
+                    $staffUser->name,
+                    $staffUser->email,
+                    $staffUser->role ?? 'User',
+                    $staffUser->department ?? 'N/A',
+                    $dateRangeText,
+                    $totalTasks,
+                    $completed,
+                    $pending,
+                    $approved,
+                    $rejected,
+                    $taskDetails
+                ];
+                $sheet->fromArray($data, null, 'A' . $rowIndex);
+                $rowIndex++;
+            }
+
+            // Style data rows
+            if ($rowIndex > 2) {
+                $dataStyle = [
+                    'borders' => [
+                        'allBorders' => [
+                            'borderStyle' => Border::BORDER_THIN,
+                            'color' => ['rgb' => 'CCCCCC'],
+                        ],
+                    ],
+                    'alignment' => [
+                        'vertical' => Alignment::VERTICAL_TOP,
+                    ],
+                ];
+                $sheet->getStyle('A2:L' . ($rowIndex - 1))->applyFromArray($dataStyle);
+
+                // Wrap text for task details column
+                $sheet->getStyle('L2:L' . ($rowIndex - 1))->getAlignment()->setWrapText(true);
+
+                // Center align the count columns
+                $sheet->getStyle('G2:K' . ($rowIndex - 1))->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+            }
+
+            // Set column widths
+            $sheet->getColumnDimension('A')->setWidth(10);  // Staff ID
+            $sheet->getColumnDimension('B')->setWidth(25);  // Staff Name
+            $sheet->getColumnDimension('C')->setWidth(30);  // Email
+            $sheet->getColumnDimension('D')->setWidth(20);  // Role
+            $sheet->getColumnDimension('E')->setWidth(20);  // Department
+            $sheet->getColumnDimension('F')->setWidth(20);  // Date Range
+            $sheet->getColumnDimension('G')->setWidth(12);  // Total Tasks
+            $sheet->getColumnDimension('H')->setWidth(12);  // Completed
+            $sheet->getColumnDimension('I')->setWidth(12);  // Pending
+            $sheet->getColumnDimension('J')->setWidth(12);  // Approved
+            $sheet->getColumnDimension('K')->setWidth(12);  // Rejected
+            $sheet->getColumnDimension('L')->setWidth(80);  // All Tasks Details
+
+            // Set row height for header
+            $sheet->getRowDimension(1)->setRowHeight(25);
+
+            // Generate filename
+            $dateRange = ($fromDate && $toDate) ? "{$fromDate}_to_{$toDate}" : date('Y-m-d');
+            $filename = 'WorkMonitor_Report_' . $dateRange . '.xlsx';
+
+            // Create writer and output
+            $writer = new Xlsx($spreadsheet);
+
+            // Set headers for download
+            header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+            header('Content-Disposition: attachment;filename="' . $filename . '"');
+            header('Cache-Control: max-age=0');
+            header('Cache-Control: max-age=1');
+            header('Expires: Mon, 26 Jul 1997 05:00:00 GMT');
+            header('Last-Modified: ' . gmdate('D, d M Y H:i:s') . ' GMT');
+            header('Cache-Control: cache, must-revalidate');
+            header('Pragma: public');
+
+            $writer->save('php://output');
+            exit;
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to export Excel: ' . $e->getMessage()
             ], 500);
         }
     }

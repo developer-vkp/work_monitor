@@ -2680,34 +2680,25 @@ function restoreData(){
 function exportReport(fmt){
   var fromDate=S.overviewFromDate;
   var toDate=S.overviewToDate;
-  var dateRangeText=(fromDate===toDate)?fromDate:(fromDate+' to '+toDate);
-  var active=activeStaff();
 
   if(fmt==='xlsx'){
-    // Build CSV (Excel-compatible) for date range
-    var csvRows=['Staff ID,Name,Designation,Department,Date,Task No,Task Description,Status,Action,Remarks'];
-    active.forEach(function(s){
-      // Filter tasks within date range
-      var ts=TASKS.filter(function(t){
-        if(t.staffId!==s.id)return false;
-        var taskDate=String(t.date||'').substring(0,10);
-        var from=String(fromDate||'').substring(0,10);
-        var to=String(toDate||'').substring(0,10);
-        return taskDate>=from && taskDate<=to;
-      });
-      if(ts.length===0){
-        csvRows.push([s.id,s.name,s.role,s.inst,dateRangeText,'','','','',''].join(','));
-      } else {
-        ts.forEach(function(t){
-          function q(v){return '"'+(String(v||'').replace(/"/g,'""'))+'"';}
-          csvRows.push([q(s.id),q(s.name),q(s.role),q(s.inst),q(t.date),t.n,q(t.desc),q(t.status),q(t.action||'Pending'),q(t.remarks)].join(','));
-        });
-      }
-    });
-    var blob2=new Blob([csvRows.join('\n')],{type:'text/csv;charset=utf-8'});
-    var a2=document.createElement('a');a2.href=URL.createObjectURL(blob2);
-    a2.download='WorkMonitor_Report_'+fromDate+'_to_'+toDate+'.csv';a2.click();
-    toast('Excel (CSV) exported — open in Excel','s');
+    // Export to Excel format using backend endpoint
+    toast('Generating Excel report...','i');
+
+    // Build URL with date range parameters
+    var url='/api/tasks/export-excel?from_date='+encodeURIComponent(fromDate)+'&to_date='+encodeURIComponent(toDate);
+
+    // Create a temporary link and trigger download
+    var a=document.createElement('a');
+    a.href=url;
+    a.download='WorkMonitor_Report_'+fromDate+'_to_'+toDate+'.xlsx';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+
+    setTimeout(function(){
+      toast('Excel report downloaded successfully','s');
+    }, 1000);
   }
 }
 
